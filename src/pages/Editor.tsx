@@ -533,7 +533,7 @@ return (
           </motion.div>
         </div>
 
-        <div className="w-full md:w-[22rem] lg:w-96 flex flex-col h-1/2 md:h-full gap-4 md:gap-6 shrink-0 relative z-10">
+        <div className="w-full md:w-[32rem] lg:w-[38rem] flex flex-col h-1/2 md:h-full gap-4 md:gap-6 shrink-0 relative z-10">
           <motion.div 
              initial={{ opacity: 0, x: 20 }}
              animate={{ opacity: 1, x: 0 }}
@@ -580,74 +580,57 @@ return (
               </div>
             </div>
             
-            <div className="flex-1 overflow-y-auto p-0 flex flex-col scrollbar-hide">
-              {['across', 'down'].map((dir) => (
-                <div key={dir} className="flex flex-col border-b border-cafe-leather/5 last:border-b-0">
-                  <div className="p-3 border-b border-cafe-leather/10 flex justify-between items-center bg-cafe-parchment/50 sticky top-0 z-10">
-                    <h2 className="font-subhead text-xs font-bold uppercase tracking-widest text-cafe-espresso/60 flex items-center gap-2">
-                      {dir === 'across' ? <ArrowRight size={14}/> : <ArrowDown size={14} />}
-                      {t(dir)}
-                    </h2>
-                  </div>
-                  <div className="p-2 space-y-1 bg-cafe-paper">
-                     {board.clues[dir as 'across' | 'down'].map(clue => {
-                       const isActive = activeClue?.number === clue.number && direction === dir;
-                       return (
-                         <div key={clue.number} className="flex flex-col">
-                           <div 
-                             className={clsx(
-                               "flex gap-3 text-sm p-3 transition-all cursor-text rounded-sm border",
-                               isActive ? "bg-cafe-gold/10 border-cafe-gold/30 text-cafe-leather" : "hover:bg-cafe-parchment/50 border-transparent text-cafe-espresso/70"
-                             )}
-                             onClick={() => {
-                               setSelectedCell({x: clue.x, y: clue.y});
-                               setDirection(dir as 'across'|'down');
-                             }}
-                           >
-                             <div className="flex flex-col items-end min-w-[28px] shrink-0">
-                               <span className="font-display font-bold text-right">{clue.number}</span>
-                               <span className="text-[10px] font-mono text-cafe-espresso/40">({clue.length})</span>
-                             </div>
-                             <input 
-                               className="flex-1 bg-transparent font-body outline-none placeholder:text-cafe-espresso/30 min-w-0"
-                               placeholder={t('enterClue')}
-                               value={clue.text}
-                               onChange={e => updateClue(dir as 'across'|'down', clue.number, e.target.value)}
-                               onClick={(e) => {
+            <div className="flex-1 overflow-y-auto p-0 flex scrollbar-hide">
+              {/* Two-column layout for clues: ACROSS | DOWN */}
+              <div className="grid grid-cols-2 gap-4 w-full">
+                {['across', 'down'].map((dir) => (
+                  <div key={dir} className="flex flex-col border border-cafe-leather/15 rounded-sm bg-cafe-paper">
+                    <div className="p-3 border-b border-cafe-leather/15 flex justify-between items-center bg-cafe-parchment/60 sticky top-0 z-10 rounded-t-sm">
+                      <h2 className="font-subhead text-sm font-bold uppercase tracking-widest text-cafe-leather flex items-center gap-2">
+                        {dir === 'across' ? <ArrowRight size={16}/> : <ArrowDown size={16}/>}
+                        {t(dir)}
+                      </h2>
+                      <span className="text-xs font-mono text-cafe-espresso/50">{board.clues[dir as 'across'|'down'].length}</span>
+                    </div>
+                    <div className="p-3 space-y-2 overflow-y-auto max-h-[calc(100vh-22rem)]">
+                       {board.clues[dir as 'across' | 'down'].map(clue => {
+                         const isActive = activeClue?.number === clue.number && direction === dir;
+                         return (
+                           <div key={clue.number} className="flex flex-col">
+                             <div 
+                               className={clsx(
+                                 "flex gap-3 items-center text-base px-3 py-3 transition-all cursor-pointer rounded-md border",
+                                 isActive ? "bg-cafe-gold/15 border-cafe-gold/40 ring-2 ring-cafe-gold/30" : "hover:bg-cafe-parchment/60 border-cafe-leather/10"
+                               )}
+                               onClick={() => {
                                  setSelectedCell({x: clue.x, y: clue.y});
                                  setDirection(dir as 'across'|'down');
-                                 e.stopPropagation();
                                }}
-                               onKeyDown={e => e.stopPropagation()}
-                             />
-                           </div>
-                           {isActive && (
-                             <motion.div 
-                               initial={{ height: 0, opacity: 0 }}
-                               animate={{ height: "auto", opacity: 1 }}
-                               className="px-4 pb-4 ml-[40px] text-lg tracking-[0.25em] font-mono font-bold text-cafe-espresso/40 uppercase overflow-hidden"
                              >
-                                 {(() => {
-                                    let word = '';
-                                    if (dir === 'across') {
-                                       for(let i=0; i<clue.length; i++) {
-                                          word += getCell(clue.x + i, clue.y)?.value || '_';
-                                       }
-                                    } else {
-                                       for(let i=0; i<clue.length; i++) {
-                                          word += getCell(clue.x, clue.y + i)?.value || '_';
-                                       }
-                                    }
-                                    return word;
-                                 })()}
-                             </motion.div>
-                           )}
-                         </div>
-                       );
-                     })}
+                               <div className="flex items-center min-w-[32px] shrink-0">
+                                 <span className="font-display font-bold text-lg text-cafe-leather">{clue.number}</span>
+                               </div>
+                               <input 
+                                 className="flex-1 bg-transparent font-body text-base outline-none placeholder:text-cafe-espresso/30 text-cafe-leather min-w-0"
+                                 placeholder={t('enterClue')}
+                                 value={clue.text}
+                                 onChange={e => updateClue(dir as 'across'|'down', clue.number, e.target.value)}
+                                 onClick={(e) => {
+                                   setSelectedCell({x: clue.x, y: clue.y});
+                                   setDirection(dir as 'across'|'down');
+                                   e.stopPropagation();
+                                 }}
+                                 onKeyDown={e => e.stopPropagation()}
+                               />
+                               <span className="text-xs font-mono text-cafe-espresso/40 shrink-0">{clue.length}</span>
+                             </div>
+                           </div>
+                         );
+                       })}
+                    </div>
                   </div>
-                </div>
-              ))}
+                ))}
+              </div>
             </div>
           </motion.div>
         </div>
