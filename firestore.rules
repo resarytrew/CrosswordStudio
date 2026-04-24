@@ -1,0 +1,86 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    function isSignedIn() { return request.auth != null; }
+    function isValidId(id) { return id is string && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$'); }
+    function incoming() { return request.resource.data; }
+    function existing() { return resource.data; }
+
+    function isValidCrossword(data) {
+      return data.keys().hasAll(['authorId', 'title', 'boardState', 'createdAt', 'updatedAt', 'isPublished']) 
+        && data.keys().size() == 6
+        && data.authorId is string && data.authorId == request.auth.uid
+        && data.title is string && data.title.size() <= 100
+        && data.boardState is string && data.boardState.size() <= 500000
+        && data.createdAt is number
+        && data.updatedAt is number
+        && data.isPublished is bool;
+    }
+
+    function isValidCrosswordUpdate(data, old) {
+      return data.authorId == old.authorId
+        && data.createdAt == old.createdAt
+        && data.title is string && data.title.size() <= 100
+        && data.boardState is string && data.boardState.size() <= 500000
+        && data.updatedAt is number
+        && data.isPublished is bool;
+    }
+
+    match /crosswords/{crosswordId} {
+      allow get: if isValidId(crosswordId) && (
+        (existing().isPublished == true) || 
+        (isSignedIn() && existing().authorId == request.auth.uid)
+      );
+
+      allow list: if (resource.data.isPublished == true) || (isSignedIn() && resource.data.authorId == request.auth.uid);
+
+      allow create: if isValidId(crosswordId) && isSignedIn() && isValidCrossword(incoming());
+      
+      allow update: if isValidId(crosswordId) && isSignedIn() && existing().authorId == request.auth.uid && (
+        incoming().diff(existing()).affectedKeys().hasOnly(['title', 'boardState', 'updatedAt', 'isPublished']) &&
+        isValidCrosswordUpdate(incoming(), existing())
+      );
+
+      allow delete: if isValidId(crosswordId) && isSignedIn() && existing().authorId == request.auth.uid;
+    }
+
+    function isValidProgress(data) {
+      return data.keys().hasAll(['userId', 'crosswordId', 'answers', 'timer', 'isCompleted', 'lastUpdated'])
+        && data.keys().size() == 6
+        && data.userId is string && data.userId == request.auth.uid
+        && data.crosswordId is string && data.crosswordId.size() <= 128
+        && data.answers is string && data.answers.size() <= 200000
+        && data.timer is number
+        && data.isCompleted is bool
+        && data.lastUpdated is number;
+    }
+
+    function isValidProgressUpdate(data, old) {
+       return data.userId == old.userId
+         && data.crosswordId == old.crosswordId
+         && data.answers is string && data.answers.size() <= 200000
+         && data.timer is number
+         && data.isCompleted is bool
+         && data.lastUpdated is number;
+    }
+
+    match /progress/{progressId} {
+      allow get: if isValidId(progressId) && isSignedIn() && existing().userId == request.auth.uid;
+      allow list: if isSignedIn() && resource.data.userId == request.auth.uid;
+      
+      allow create: if isValidId(progressId) && isSignedIn() && isValidProgress(incoming());
+        
+      allow update: if isValidId(progressId) && isSignedIn() && existing().userId == request.auth.uid && (
+         incoming().diff(existing()).affectedKeys().hasOnly(['answers', 'timer', 'isCompleted', 'lastUpdated']) &&
+         isValidProgressUpdate(incoming(), existing())
+      );
+
+      allow delete: if isValidId(progressId) && isSignedIn() && existing().userId == request.auth.uid;
+    }
+  }
+}

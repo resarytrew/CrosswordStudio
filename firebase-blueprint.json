@@ -1,0 +1,42 @@
+{
+  "entities": {
+    "crossword": {
+      "title": "Crossword",
+      "description": "A crossword puzzle created by a user.",
+      "type": "object",
+      "properties": {
+        "authorId": { "type": "string" },
+        "title": { "type": "string" },
+        "boardState": { "type": "string", "description": "JSON string of grid and clues" },
+        "createdAt": { "type": "integer" },
+        "updatedAt": { "type": "integer" },
+        "isPublished": { "type": "boolean" }
+      },
+      "required": ["authorId", "title", "boardState", "createdAt", "updatedAt", "isPublished"]
+    },
+    "progress": {
+      "title": "Crossword Progress",
+      "description": "A user's progress on a specific crossword.",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string" },
+        "crosswordId": { "type": "string" },
+        "answers": { "type": "string", "description": "JSON string of user answers" },
+        "timer": { "type": "integer" },
+        "isCompleted": { "type": "boolean" },
+        "lastUpdated": { "type": "integer" }
+      },
+      "required": ["userId", "crosswordId", "answers", "timer", "isCompleted", "lastUpdated"]
+    }
+  },
+  "firestore": {
+    "/crosswords/{crosswordId}": {
+      "schema": { "$ref": "#/entities/crossword" },
+      "description": "Stores created crosswords."
+    },
+    "/progress/{progressId}": {
+      "schema": { "$ref": "#/entities/progress" },
+      "description": "Stores user solving progress."
+    }
+  }
+}
