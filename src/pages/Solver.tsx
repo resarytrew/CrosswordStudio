@@ -1,216 +1,190 @@
-import React, { useEffect, useState, useCallback } from "react";
+import React, { useEffect, useState, useCallback, useRef } from "react";
 import { useParams } from "react-router-dom";
 import { db, handleFirestoreError } from "../lib/firebase";
-import { doc, getDoc, setDoc, updateDoc } from "firebase/firestore";
+import { doc, getDoc, setDoc } from "firebase/firestore";
 import { useAuth } from "../contexts/AuthContext";
 import { useLanguage } from "../contexts/LanguageContext";
+import { useCafe } from "../contexts/CafeContext";
 import { BoardState, Crossword, Progress } from "../types";
 import clsx from "clsx";
 import {
-  Clock,
-  CheckCircle2,
-  ArrowRight,
-  ArrowDown,
-  ArrowLeft,
-  ChevronLeft,
-  ChevronRight,
+  Clock, CheckCircle2, ArrowRight, ArrowDown, ArrowLeft,
+  ChevronLeft, ChevronRight, Coffee, BookOpen, Feather, Trophy,
 } from "lucide-react";
 import { motion, AnimatePresence } from "motion/react";
+import { Steam, FloatingParticles, CoffeeBean } from "../components/CafeAnimations";
 
+/* ═══════════════════════════════════════════════════════════════
+   SOLVER  — Читальный зал Кафе Эрудитов
+   ═══════════════════════════════════════════════════════════════ */
 export function Solver() {
   const { id } = useParams();
   const { user, login } = useAuth();
-  const { t } = useLanguage();
+  const { language, t } = useLanguage();
+  const { playSound, effectsEnabled } = useCafe();
+
   const [cw, setCw] = useState<Crossword | null>(null);
   const [board, setBoard] = useState<BoardState | null>(null);
-
   const [answers, setAnswers] = useState<Record<string, string>>({});
   const [timer, setTimer] = useState(0);
   const [isCompleted, setIsCompleted] = useState(false);
   const [progressId, setProgressId] = useState<string | null>(null);
-
-  const [selectedCell, setSelectedCell] = useState<{
-    x: number;
-    y: number;
-  } | null>(null);
+  const [selectedCell, setSelectedCell] = useState<{ x: number; y: number } | null>(null);
   const [direction, setDirection] = useState<"across" | "down">("across");
+  const [recentCell, setRecentCell] = useState<string | null>(null);
+  const clueRefs = useRef<Record<string, HTMLDivElement | null>>({});
 
+  /* ── DATA LOADING ── */
   useEffect(() => {
     if (!id) return;
-    async function load() {
+    (async () => {
       try {
-        const d = await getDoc(doc(db, "crosswords", id!));
-        if (d.exists()) {
-          const data = d.data() as Crossword;
-          setCw(data);
-          const b = JSON.parse(data.boardState) as BoardState;
-          setBoard(b);
-
-          // Find first empty play cell
-          for (let y = 0; y < b.height; y++) {
-            let found = false;
-            for (let x = 0; x < b.width; x++) {
-              const c = b.grid.find((c) => c.x === x && c.y === y);
-              if (c && !c.isBlock && !c.isHidden) {
-                setSelectedCell({ x, y });
-                found = true;
-                break;
-              }
-            }
-            if (found) break;
+        const d = await getDoc(doc(db, "crosswords", id));
+        if (!d.exists()) return;
+        const data = d.data() as Crossword;
+        setCw(data);
+        const b = JSON.parse(data.boardState) as BoardState;
+        setBoard(b);
+        for (let y = 0; y < b.height; y++) {
+          for (let x = 0; x < b.width; x++) {
+            const c = b.grid.find(c => c.x === x && c.y === y);
+            if (c && !c.isBlock && !c.isHidden) { setSelectedCell({ x, y }); return; }
           }
         }
-      } catch (err) {
-        handleFirestoreError(err, "get", `/crosswords/${id}`);
-      }
-    }
-    load();
+      } catch (err) { handleFirestoreError(err, "get", `/crosswords/${id}`); }
+    })();
   }, [id]);
 
   useEffect(() => {
     if (!id || !user) return;
-    async function loadProgress() {
-      const pid = `${user!.uid}_${id}`;
+    (async () => {
+      const pid = `${user.uid}_${id}`;
       setProgressId(pid);
       try {
         const pr = await getDoc(doc(db, "progress", pid));
         if (pr.exists()) {
-          const pData = pr.data() as Progress;
-          setAnswers(JSON.parse(pData.answers));
-          setTimer(pData.timer);
-          setIsCompleted(pData.isCompleted);
+          const p = pr.data() as Progress;
+          setAnswers(JSON.parse(p.answers));
+          setTimer(p.timer);
+          setIsCompleted(p.isCompleted);
         }
-      } catch (err) {
-        handleFirestoreError(err, "get", `/progress/${pid}`);
-      }
-    }
-    loadProgress();
+      } catch (err) { handleFirestoreError(err, "get", `/progress/${pid}`); }
+    })();
   }, [id, user]);
 
-  // Timer
+  /* ── TIMER ── */
   useEffect(() => {
     if (isCompleted || !cw) return;
-    const interval = setInterval(() => setTimer((t) => t + 1), 1000);
-    return () => clearInterval(interval);
+    const iv = setInterval(() => setTimer(t => t + 1), 1000);
+    return () => clearInterval(iv);
   }, [isCompleted, cw]);
 
-  // Check completion
+  /* ── COMPLETION CHECK ── */
   useEffect(() => {
     if (!board || isCompleted) return;
-    let completed = true;
+    let ok = true;
     for (const cell of board.grid) {
-      if (!cell.isBlock) {
-        const ans = answers[`${cell.x},${cell.y}`] || "";
-        if (ans !== cell.value) {
-          completed = false;
-          break;
-        }
+      if (!cell.isBlock && !cell.isHidden) {
+        if ((answers[`${cell.x},${cell.y}`] || "") !== cell.value) { ok = false; break; }
       }
     }
-    if (completed && Object.keys(answers).length > 0) {
-      setIsCompleted(true);
-    }
+    if (ok && Object.keys(answers).length > 0) { setIsCompleted(true); playSound("success"); }
   }, [answers, board, isCompleted]);
 
-  // Save progress
+  /* ── SAVE PROGRESS ── */
   useEffect(() => {
     if (!id || !user || !progressId || !board) return;
-    const save = setTimeout(async () => {
-      const p: Progress = {
-        userId: user.uid,
-        crosswordId: id,
-        answers: JSON.stringify(answers),
-        timer,
-        isCompleted,
-        lastUpdated: Date.now(),
-      };
+    const t = setTimeout(async () => {
       try {
-        await setDoc(doc(db, "progress", progressId), p);
-      } catch (err) {
-        handleFirestoreError(err, "create", `/progress/${progressId}`);
-      }
+        await setDoc(doc(db, "progress", progressId), {
+          userId: user.uid, crosswordId: id,
+          answers: JSON.stringify(answers), timer, isCompleted, lastUpdated: Date.now(),
+        } as Progress);
+      } catch (err) { handleFirestoreError(err, "create", `/progress/${progressId}`); }
     }, 2000);
-    return () => clearTimeout(save);
+    return () => clearTimeout(t);
   }, [answers, timer, isCompleted, id, user, progressId, board]);
+
+  /* ── HELPERS ── */
+  const getCell = (x: number, y: number) => board?.grid.find(c => c.x === x && c.y === y);
 
   const setAnswer = (x: number, y: number, letter: string) => {
     if (isCompleted) return;
-    setAnswers((prev) => ({ ...prev, [`${x},${y}`]: letter }));
+    setAnswers(prev => ({ ...prev, [`${x},${y}`]: letter }));
+    if (letter) {
+      playSound("letter-input");
+      setRecentCell(`${x},${y}`);
+      setTimeout(() => setRecentCell(null), 300);
+    }
   };
-
-  const getCell = (x: number, y: number) =>
-    board?.grid.find((c) => c.x === x && c.y === y);
 
   const activeClueInfo = React.useMemo(() => {
     if (!selectedCell || !board) return null;
-    let num = null;
     if (direction === "across") {
       let cx = selectedCell.x;
       while (cx > 0 && !getCell(cx - 1, selectedCell.y)?.isBlock) cx--;
-      num = getCell(cx, selectedCell.y)?.number;
-      if (num) return board.clues.across.find((c) => c.number === num);
+      const num = getCell(cx, selectedCell.y)?.number;
+      if (num) return board.clues.across.find(c => c.number === num) || null;
     } else {
       let cy = selectedCell.y;
       while (cy > 0 && !getCell(selectedCell.x, cy - 1)?.isBlock) cy--;
-      num = getCell(selectedCell.x, cy)?.number;
-      if (num) return board.clues.down.find((c) => c.number === num);
+      const num = getCell(selectedCell.x, cy)?.number;
+      if (num) return board.clues.down.find(c => c.number === num) || null;
     }
     return null;
   }, [selectedCell, direction, board]);
 
+  /* scroll active clue into view */
+  useEffect(() => {
+    if (!activeClueInfo) return;
+    const key = `${direction}-${activeClueInfo.number}`;
+    const el = clueRefs.current[key];
+    if (el) el.scrollIntoView({ behavior: "smooth", block: "nearest" });
+  }, [activeClueInfo, direction]);
+
+  const navigateClue = (delta: number) => {
+    if (!board || !activeClueInfo) return;
+    const clues = board.clues[direction];
+    const idx = clues.findIndex(c => c.number === activeClueInfo.number);
+    const next = clues[idx + delta];
+    if (next) { setSelectedCell({ x: next.x, y: next.y }); playSound("cell-select"); }
+  };
+
+  const formatTime = (s: number) => `${Math.floor(s / 60)}:${(s % 60).toString().padStart(2, "0")}`;
+
+  const progressPercent = React.useMemo(() => {
+    if (!board) return 0;
+    const play = board.grid.filter(c => !c.isBlock && !c.isHidden);
+    const filled = play.filter(c => (answers[`${c.x},${c.y}`] || "") !== "").length;
+    return play.length > 0 ? Math.round((filled / play.length) * 100) : 0;
+  }, [answers, board]);
+
+  /* ── KEYBOARD ── */
   const handleKeyDown = (e: React.KeyboardEvent) => {
     if (!selectedCell || !board || isCompleted) return;
-    const cell = getCell(selectedCell.x, selectedCell.y);
-    if (!cell) return;
-
     if (e.key === "Backspace") {
       setAnswer(selectedCell.x, selectedCell.y, "");
-      if (direction === "across") {
-        let nx = selectedCell.x - 1;
-        while (
-          nx >= 0 &&
-          (getCell(nx, selectedCell.y)?.isBlock ||
-            getCell(nx, selectedCell.y)?.isHidden)
-        )
-          nx--;
-        if (nx >= 0) setSelectedCell({ x: nx, y: selectedCell.y });
-      } else {
-        let ny = selectedCell.y - 1;
-        while (
-          ny >= 0 &&
-          (getCell(selectedCell.x, ny)?.isBlock ||
-            getCell(selectedCell.x, ny)?.isHidden)
-        )
-          ny--;
-        if (ny >= 0) setSelectedCell({ x: selectedCell.x, y: ny });
+      const move = direction === "across"
+        ? { dx: -1, dy: 0 } : { dx: 0, dy: -1 };
+      let nx = selectedCell.x + move.dx, ny = selectedCell.y + move.dy;
+      while (nx >= 0 && ny >= 0 && nx < board.width && ny < board.height) {
+        const c = getCell(nx, ny);
+        if (c && !c.isBlock && !c.isHidden) { setSelectedCell({ x: nx, y: ny }); break; }
+        nx += move.dx; ny += move.dy;
       }
       return;
     }
-
     if (/^[a-zA-Zа-яА-ЯёЁ]$/.test(e.key)) {
       setAnswer(selectedCell.x, selectedCell.y, e.key.toUpperCase());
-      if (direction === "across") {
-        let nx = selectedCell.x + 1;
-        while (
-          nx < board.width &&
-          (getCell(nx, selectedCell.y)?.isBlock ||
-            getCell(nx, selectedCell.y)?.isHidden)
-        )
-          nx++;
-        if (nx < board.width) setSelectedCell({ x: nx, y: selectedCell.y });
-      } else {
-        let ny = selectedCell.y + 1;
-        while (
-          ny < board.height &&
-          (getCell(selectedCell.x, ny)?.isBlock ||
-            getCell(selectedCell.x, ny)?.isHidden)
-        )
-          ny++;
-        if (ny < board.height) setSelectedCell({ x: selectedCell.x, y: ny });
+      const move = direction === "across" ? { dx: 1, dy: 0 } : { dx: 0, dy: 1 };
+      let nx = selectedCell.x + move.dx, ny = selectedCell.y + move.dy;
+      while (nx >= 0 && ny >= 0 && nx < board.width && ny < board.height) {
+        const c = getCell(nx, ny);
+        if (c && !c.isBlock && !c.isHidden) { setSelectedCell({ x: nx, y: ny }); break; }
+        nx += move.dx; ny += move.dy;
       }
       return;
     }
-
     if (e.key.startsWith("Arrow")) {
       e.preventDefault();
       let { x, y } = selectedCell;
@@ -218,438 +192,343 @@ export function Solver() {
       if (e.key === "ArrowDown") y = Math.min(board.height - 1, y + 1);
       if (e.key === "ArrowLeft") x = Math.max(0, x - 1);
       if (e.key === "ArrowRight") x = Math.min(board.width - 1, x + 1);
-
-      const target = getCell(x, y);
-      if (target && !target.isBlock && !target.isHidden)
-        setSelectedCell({ x, y });
+      const t = getCell(x, y);
+      if (t && !t.isBlock && !t.isHidden) setSelectedCell({ x, y });
     }
   };
 
   const handleCellClick = (x: number, y: number) => {
     if (selectedCell?.x === x && selectedCell?.y === y) {
-      setDirection((d) => (d === "across" ? "down" : "across"));
+      setDirection(d => d === "across" ? "down" : "across");
     } else {
       setSelectedCell({ x, y });
+      playSound("cell-select");
     }
   };
 
-  const formatTime = (secs: number) => {
-    const m = Math.floor(secs / 60);
-    const s = secs % 60;
-    return `${m}:${s.toString().padStart(2, "0")}`;
-  };
+  /* ── LOADING ── */
+  if (!board || !cw) return (
+    <div className="flex-1 flex flex-col items-center justify-center bg-cafe-cream gap-4">
+      <motion.div animate={{ rotate: 360 }} transition={{ duration: 2, repeat: Infinity, ease: "linear" }}
+        className="w-12 h-12 border-2 border-cafe-leather/10 border-t-cafe-gold rounded-full" />
+      <p className="font-subhead text-cafe-espresso/50 italic">{language === "ru" ? "Завариваем кроссворд..." : "Brewing your puzzle..."}</p>
+    </div>
+  );
 
-  const progressPercent = React.useMemo(() => {
-    if (!board) return 0;
-    const filledCount = Object.entries(answers).filter(([k, v]) => {
-      const [x, y] = k.split(",").map(Number);
-      const cell = board.grid.find((c) => c.x === x && c.y === y);
-      return cell && !cell.isBlock && !cell.isHidden && v !== "";
-    }).length;
-    const totalPlayCells = board.grid.filter(
-      (c) => !c.isBlock && !c.isHidden,
-    ).length;
-    return totalPlayCells > 0
-      ? Math.round((filledCount / totalPlayCells) * 100)
-      : 0;
-  }, [answers, board]);
+  const totalCells = board.grid.filter(c => !c.isBlock && !c.isHidden).length;
 
-  if (!board || !cw)
-    return (
-      <div className="p-8 text-center animate-pulse">{t("loadingPuzzle")}</div>
-    );
-
+  /* ═══════════════════════════════════════════════
+     RENDER
+     ═══════════════════════════════════════════════ */
   return (
-    <div
-      className="flex flex-col h-full bg-[#f8fafc] overflow-hidden relative"
-      onKeyDown={handleKeyDown}
-      tabIndex={0}
-    >
-      {/* Premium Abstract Background */}
+    <div className="flex flex-col h-full bg-cafe-cream overflow-hidden relative" onKeyDown={handleKeyDown} tabIndex={0}>
+
+      {/* ── ambient background ── */}
+      {effectsEnabled && <FloatingParticles count={6} className="opacity-15 z-0" />}
       <div className="absolute inset-0 z-0 overflow-hidden pointer-events-none">
-        <div className="absolute top-[-10%] left-[-10%] w-[50%] h-[50%] bg-blue-200/30 blur-[100px] rounded-full mix-blend-multiply" />
-        <div className="absolute bottom-[-10%] right-[-10%] w-[50%] h-[50%] bg-purple-200/30 blur-[100px] rounded-full mix-blend-multiply" />
-        <div className="absolute top-[20%] left-[40%] w-[40%] h-[40%] bg-emerald-100/30 blur-[80px] rounded-full mix-blend-multiply" />
-        <div className="absolute inset-0 bg-white/60 backdrop-blur-[40px]" />
+        <div className="absolute top-[-15%] left-[-5%] w-[50%] h-[50%] bg-cafe-lamp/8 blur-[100px] rounded-full" />
+        <div className="absolute bottom-[-10%] right-[-8%] w-[45%] h-[45%] bg-cafe-wine/6 blur-[90px] rounded-full" />
       </div>
 
+      {/* ═══ VICTORY OVERLAY ═══ */}
       <AnimatePresence>
         {isCompleted && (
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            className="absolute inset-0 z-50 flex items-center justify-center bg-slate-900/60 backdrop-blur-sm"
+          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+            className="absolute inset-0 z-50 flex items-center justify-center"
           >
-            <motion.div
-              initial={{ scale: 0.9, y: 20 }}
-              animate={{ scale: 1, y: 0 }}
-              className="bg-white p-10 rounded-3xl shadow-2xl flex flex-col items-center max-w-sm w-full mx-4 border border-slate-200/50"
-            >
-              <motion.div
-                initial={{ scale: 0 }}
-                animate={{ scale: 1, rotate: 360 }}
-                transition={{ type: "spring", bounce: 0.5, duration: 0.8 }}
+            <div className="absolute inset-0 bg-cafe-leather/70 backdrop-blur-lg" />
+
+            {/* floating beans */}
+            {effectsEnabled && Array.from({ length: 20 }).map((_, i) => (
+              <motion.div key={i}
+                initial={{ x: Math.random() * 600 - 300, y: 400, opacity: 0, rotate: 0 }}
+                animate={{ y: -600, opacity: [0, 1, 0], rotate: 720 }}
+                transition={{ duration: 3 + Math.random() * 2, delay: Math.random() * 0.8, repeat: Infinity }}
+                className="absolute w-3 h-4"
               >
-                <CheckCircle2
-                  size={80}
-                  className="text-emerald-500 mb-6 drop-shadow-sm"
-                />
+                <CoffeeBean count={1} className="text-cafe-gold/60" />
               </motion.div>
-              <h2 className="tracking-tight text-4xl font-black text-slate-900 mb-2">
-                {t("congrats")}
-              </h2>
-              <p className="text-slate-500 font-medium mb-8 text-center text-lg">
-                {t("solvedIn")}{" "}
-                <span className="text-indigo-600 font-bold">
-                  {formatTime(timer)}
-                </span>
-              </p>
-              <button
-                onClick={() => (window.location.href = "/")}
-                className="w-full py-4 bg-slate-900 text-white rounded-xl font-bold hover:bg-slate-800 transition-all shadow-md active:scale-[0.98] text-lg"
-              >
-                {t("returnToPuzzles")}
-              </button>
+            ))}
+
+            <motion.div
+              initial={{ scale: 0.85, y: 30, opacity: 0 }}
+              animate={{ scale: 1, y: 0, opacity: 1 }}
+              transition={{ type: "spring", bounce: 0.4, delay: 0.1 }}
+              className="relative bg-cafe-paper rounded-sm shadow-2xl max-w-md w-full mx-4 overflow-hidden"
+            >
+              <div className="h-1.5 bg-gradient-to-r from-cafe-gold via-cafe-lamp to-cafe-gold" />
+
+              <div className="p-10 sm:p-12 flex flex-col items-center text-center">
+                <div className="relative mb-6">
+                  <Steam intensity="high" className="absolute -top-6 left-1/2 -translate-x-1/2" />
+                  <motion.div
+                    initial={{ scale: 0, rotate: -180 }}
+                    animate={{ scale: 1, rotate: 0 }}
+                    transition={{ type: "spring", bounce: 0.6, delay: 0.3 }}
+                    className="w-20 h-20 bg-cafe-gold/10 rounded-full flex items-center justify-center"
+                  >
+                    <Trophy size={40} className="text-cafe-gold drop-shadow-lg" />
+                  </motion.div>
+                </div>
+
+                <motion.h2 initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.4 }}
+                  className="font-display text-4xl font-bold text-cafe-leather mb-2">{t("congrats")}</motion.h2>
+
+                <motion.p initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.6 }}
+                  className="font-body text-cafe-espresso/60 mb-8 text-lg">
+                  {t("solvedIn")} <span className="text-cafe-honey font-bold font-mono">{formatTime(timer)}</span>
+                </motion.p>
+
+                {/* stats row */}
+                <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.7 }}
+                  className="flex gap-6 mb-8">
+                  {[
+                    { label: language === "ru" ? "Время" : "Time", value: formatTime(timer) },
+                    { label: language === "ru" ? "Слов" : "Words", value: `${board.clues.across.length + board.clues.down.length}` },
+                    { label: language === "ru" ? "Клеток" : "Cells", value: `${totalCells}` },
+                  ].map(s => (
+                    <div key={s.label} className="text-center">
+                      <div className="font-mono text-xl font-bold text-cafe-leather">{s.value}</div>
+                      <div className="font-subhead text-xs text-cafe-espresso/40 uppercase tracking-wider">{s.label}</div>
+                    </div>
+                  ))}
+                </motion.div>
+
+                <motion.button whileHover={{ scale: 1.02, y: -2 }} whileTap={{ scale: 0.98 }}
+                  onClick={() => { playSound("page-turn"); window.location.href = "/"; }}
+                  className="w-full py-4 bg-cafe-leather text-cafe-paper rounded-sm font-subhead font-bold text-lg hover:bg-cafe-espresso transition-all shadow-lg">
+                  {t("returnToPuzzles")}
+                </motion.button>
+              </div>
             </motion.div>
           </motion.div>
         )}
       </AnimatePresence>
 
-      <div className="h-16 flex items-center justify-between px-6 bg-white/70 backdrop-blur-xl border-b border-white/40 shadow-[0_4px_30px_rgba(0,0,0,0.03)] shrink-0 relative z-20">
-        <div className="flex items-center gap-4">
-          <button
-            onClick={() => (window.location.href = "/")}
-            className="text-slate-500 hover:text-slate-900 transition-colors p-1.5 hover:bg-white/50 rounded-lg active:scale-95"
-          >
-            <ArrowLeft size={20} />
-          </button>
-          <div className="h-6 w-px bg-slate-200" />
-          <h1 className="text-xl font-extrabold tracking-tight text-slate-900">
-            {cw.title}
-          </h1>
+      {/* ═══ HEADER BAR ═══ */}
+      <div className="h-14 flex items-center justify-between px-4 sm:px-6 bg-cafe-paper/80 backdrop-blur-xl border-b border-cafe-leather/8 shrink-0 relative z-20">
+        <div className="flex items-center gap-3">
+          <motion.button whileTap={{ scale: 0.9 }} onClick={() => (window.location.href = "/")}
+            className="text-cafe-espresso/40 hover:text-cafe-leather transition-colors p-1.5 hover:bg-cafe-leather/5 rounded-sm">
+            <ArrowLeft size={18} />
+          </motion.button>
+          <div className="h-5 w-px bg-cafe-leather/10" />
+          <h1 className="text-lg font-display font-bold text-cafe-leather truncate max-w-[200px] sm:max-w-none">{cw.title}</h1>
         </div>
-        <div className="flex items-center gap-4">
-          <div className="hidden sm:flex items-center gap-3">
-            <div className="text-xs font-bold text-slate-400 uppercase tracking-widest">
-              {t("result") || "RESULT"}
-            </div>
-            <div className="flex items-center gap-2">
-              <div className="w-32 h-2.5 bg-slate-200/50 rounded-full overflow-hidden border border-slate-200/30">
-                <div
-                  className="h-full bg-indigo-500 rounded-full transition-all duration-300 shadow-[inset_0_1px_2px_rgba(255,255,255,0.4)]"
-                  style={{ width: `${progressPercent}%` }}
-                />
-              </div>
-              <div className="text-sm font-extrabold text-slate-700 min-w-[32px] text-right">
-                {progressPercent}%
-              </div>
+
+        <div className="flex items-center gap-3">
+          {/* progress ring */}
+          <div className="hidden sm:flex items-center gap-2">
+            <div className="relative w-8 h-8">
+              <svg viewBox="0 0 36 36" className="w-full h-full -rotate-90">
+                <circle cx="18" cy="18" r="15" fill="none" stroke="currentColor" strokeWidth="3" className="text-cafe-leather/8" />
+                <circle cx="18" cy="18" r="15" fill="none" stroke="currentColor" strokeWidth="3" className="text-cafe-gold"
+                  strokeDasharray={`${progressPercent * 0.94} 100`} strokeLinecap="round" />
+              </svg>
+              <span className="absolute inset-0 flex items-center justify-center text-[9px] font-mono font-bold text-cafe-leather">{progressPercent}</span>
             </div>
           </div>
-          <div className="h-6 w-px bg-slate-200 hidden sm:block" />
-          <div className="flex items-center gap-2 text-slate-700 font-mono font-bold bg-white/60 px-3 py-1.5 rounded-lg border border-white/50 shadow-sm">
-            <Clock size={16} className="text-indigo-500" />
+
+          <div className="h-5 w-px bg-cafe-leather/10 hidden sm:block" />
+
+          {/* timer */}
+          <div className="flex items-center gap-1.5 font-mono text-sm font-bold text-cafe-leather bg-cafe-parchment/40 px-2.5 py-1 rounded-sm border border-cafe-leather/8">
+            <Clock size={13} className="text-cafe-gold" />
             <span>{formatTime(timer)}</span>
           </div>
+
           {!user && (
-            <button
-              onClick={login}
-              className="px-4 py-2 text-sm bg-indigo-600 text-white rounded-lg font-semibold hover:bg-indigo-700 shadow-sm active:scale-95 transition-all outline outline-1 outline-indigo-500/10 max-h-[36px]"
-            >
+            <motion.button whileTap={{ scale: 0.95 }} onClick={login}
+              className="px-3 py-1.5 text-xs font-subhead font-semibold bg-cafe-leather text-cafe-paper rounded-sm hover:bg-cafe-espresso transition-all">
               {t("saveProgress")}
-            </button>
+            </motion.button>
           )}
         </div>
       </div>
 
-      <div className="flex-1 overflow-hidden flex flex-col xl:flex-row p-0 sm:p-4 md:p-6 lg:p-8 xl:p-10 gap-6 xl:gap-8 max-w-[1800px] mx-auto w-full relative z-10 xl:items-start">
-        {/* Play Area */}
-        <div className="flex-1 flex flex-col items-center justify-start bg-transparent overflow-y-auto overflow-x-hidden p-4 pb-[20rem] xl:pb-4 max-h-[85vh] xl:sticky xl:top-6">
-          {/* Active Clue display on mobile */}
-          <div
-            className="xl:hidden w-full max-w-[600px] bg-white p-4 mb-4 rounded-xl border border-white/60 shadow-lg text-center flex flex-col gap-1 cursor-pointer"
-            onClick={() =>
-              setDirection((d) => (d === "across" ? "down" : "across"))
-            }
+      {/* ═══ MAIN AREA ═══ */}
+      <div className="flex-1 overflow-hidden flex flex-col xl:flex-row p-0 sm:p-4 md:p-6 gap-4 xl:gap-6 max-w-[1700px] mx-auto w-full relative z-10 xl:items-start">
+
+        {/* ── LEFT: GRID AREA ── */}
+        <div className="flex-1 flex flex-col items-center justify-start overflow-y-auto overflow-x-hidden p-3 pb-[22rem] xl:pb-4 max-h-[85vh] xl:sticky xl:top-4">
+
+          {/* mobile clue bar */}
+          <motion.div initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }}
+            className="xl:hidden w-full max-w-[600px] mb-3 flex items-stretch bg-cafe-paper rounded-sm border border-cafe-leather/10 shadow-md overflow-hidden"
           >
-            <span className="text-[10px] font-extrabold uppercase tracking-widest text-indigo-500 flex items-center justify-center gap-1">
-              {activeClueInfo?.number} {direction}{" "}
-              {direction === "across" ? (
-                <ArrowRight size={12} />
-              ) : (
-                <ArrowDown size={12} />
-              )}
-            </span>
-            <span className="text-sm font-bold text-slate-900 leading-tight">
-              {activeClueInfo?.text || "..."}
-            </span>
-          </div>
-
-          <motion.div
-            initial={{ opacity: 0, scale: 0.95, rotateX: 5 }}
-            animate={{ opacity: 1, scale: 1, rotateX: 0 }}
-            transition={{ duration: 0.4, ease: "easeOut", delay: 0.2 }}
-            className="gap-[1px] shadow-[0_10px_40px_-10px_rgba(0,0,0,0.2)] relative bg-slate-900 border border-slate-900"
-            style={{
-              display: "grid",
-              gridTemplateColumns: `repeat(${board.width}, 1fr)`,
-              width: "min(100%, 750px)",
-              aspectRatio: "1/1",
-            }}
-          >
-            {board.grid.map((cell) => {
-              let isInWord = false;
-              if (selectedCell && !cell.isBlock && activeClueInfo) {
-                if (direction === "across") {
-                  if (
-                    cell.y === selectedCell.y &&
-                    cell.x >= activeClueInfo.x &&
-                    cell.x < activeClueInfo.x + activeClueInfo.length
-                  ) {
-                    isInWord = true;
-                  }
-                } else {
-                  if (
-                    cell.x === selectedCell.x &&
-                    cell.y >= activeClueInfo.y &&
-                    cell.y < activeClueInfo.y + activeClueInfo.length
-                  ) {
-                    isInWord = true;
-                  }
-                }
-              }
-
-              const isSelected =
-                selectedCell?.x === cell.x && selectedCell?.y === cell.y;
-              const ans = answers[`${cell.x},${cell.y}`] || "";
-
-              return (
-                <div
-                  key={`${cell.x}-${cell.y}`}
-                  onClick={() =>
-                    !cell.isBlock &&
-                    !cell.isHidden &&
-                    handleCellClick(cell.x, cell.y)
-                  }
-                  className={clsx(
-                    "relative flex items-center justify-center select-none text-slate-900",
-                    cell.isBlock && !cell.isHidden && "bg-[#00609c]",
-                    cell.isHidden && "bg-transparent",
-                    !cell.isBlock &&
-                      !cell.isHidden &&
-                      isSelected &&
-                      "bg-[#ffdd33] z-10 cursor-text outline outline-2 outline-orange-500",
-                    !cell.isBlock &&
-                      !cell.isHidden &&
-                      !isSelected &&
-                      isInWord &&
-                      "bg-[#f4f0a6] z-0 cursor-pointer",
-                    !cell.isBlock &&
-                      !cell.isHidden &&
-                      !isSelected &&
-                      !isInWord &&
-                      "bg-white z-0 cursor-pointer hover:bg-slate-50",
-                  )}
-                >
-                  {cell.number && !cell.isBlock && !cell.isHidden && (
-                    <span className="absolute top-[2px] left-[3px] text-[10px] sm:text-[12px] font-bold leading-none text-slate-900 pointer-events-none select-none z-10">
-                      {cell.number}
-                    </span>
-                  )}
-                  {!cell.isBlock && !cell.isHidden && (
-                    <input
-                      type="text"
-                      maxLength={1}
-                      value={ans}
-                      readOnly={isCompleted}
-                      className={clsx(
-                        "absolute inset-0 w-full h-full text-center bg-transparent text-xl md:text-3xl font-extrabold uppercase cursor-pointer outline-none caret-transparent pb-0.5",
-                        isCompleted && ans === cell.value
-                          ? "text-emerald-600 drop-shadow-sm"
-                          : "text-slate-900",
-                      )}
-                      onClick={() =>
-                        !cell.isBlock &&
-                        !cell.isHidden &&
-                        handleCellClick(cell.x, cell.y)
-                      }
-                      onChange={(e) => {
-                        if (isCompleted) return;
-                        const val = e.target.value.slice(-1);
-                        if (/^[a-zA-Zа-яА-ЯёЁ]$/.test(val)) {
-                          // simulate key press to reuse logic
-                          setAnswer(cell.x, cell.y, val.toUpperCase());
-                          if (direction === "across") {
-                            let nx = cell.x + 1;
-                            while (
-                              nx < board.width &&
-                              (getCell(nx, cell.y)?.isBlock ||
-                                getCell(nx, cell.y)?.isHidden)
-                            )
-                              nx++;
-                            if (nx < board.width)
-                              setSelectedCell({ x: nx, y: cell.y });
-                          } else {
-                            let ny = cell.y + 1;
-                            while (
-                              ny < board.height &&
-                              (getCell(cell.x, ny)?.isBlock ||
-                                getCell(cell.x, ny)?.isHidden)
-                            )
-                              ny++;
-                            if (ny < board.height)
-                              setSelectedCell({ x: cell.x, y: ny });
-                          }
-                        } else if (val === "") {
-                          setAnswer(cell.x, cell.y, "");
-                        }
-                      }}
-                      onKeyDown={(e) => {
-                        if (isCompleted) return;
-                        if (e.key === "Backspace" && ans === "") {
-                          // Handle backspace when empty
-                          if (direction === "across") {
-                            let nx = cell.x - 1;
-                            while (
-                              nx >= 0 &&
-                              (getCell(nx, cell.y)?.isBlock ||
-                                getCell(nx, cell.y)?.isHidden)
-                            )
-                              nx--;
-                            if (nx >= 0) setSelectedCell({ x: nx, y: cell.y });
-                          } else {
-                            let ny = cell.y - 1;
-                            while (
-                              ny >= 0 &&
-                              (getCell(cell.x, ny)?.isBlock ||
-                                getCell(cell.x, ny)?.isHidden)
-                            )
-                              ny--;
-                            if (ny >= 0) setSelectedCell({ x: cell.x, y: ny });
-                          }
-                        } else if (e.key.startsWith("Arrow")) {
-                          e.preventDefault();
-                          let { x, y } = cell;
-                          if (e.key === "ArrowUp") y = Math.max(0, y - 1);
-                          if (e.key === "ArrowDown")
-                            y = Math.min(board.height - 1, y + 1);
-                          if (e.key === "ArrowLeft") x = Math.max(0, x - 1);
-                          if (e.key === "ArrowRight")
-                            x = Math.min(board.width - 1, x + 1);
-                          setSelectedCell({ x, y });
-                        }
-                      }}
-                    />
-                  )}
-                </div>
-              );
-            })}
+            <button onClick={() => navigateClue(-1)} className="w-10 flex items-center justify-center text-cafe-espresso/30 hover:text-cafe-honey hover:bg-cafe-leather/5 transition-colors">
+              <ChevronLeft size={20} />
+            </button>
+            <div className="flex-1 px-3 py-2.5 flex items-center gap-2 cursor-pointer min-w-0"
+              onClick={() => setDirection(d => d === "across" ? "down" : "across")}>
+              <span className="font-display font-bold text-cafe-gold text-base shrink-0">{activeClueInfo?.number}</span>
+              <span className="font-body text-sm text-cafe-leather leading-tight truncate">{activeClueInfo?.text || "..."}</span>
+              <span className="text-cafe-espresso/30 shrink-0 ml-auto">
+                {direction === "across" ? <ArrowRight size={14} /> : <ArrowDown size={14} />}
+              </span>
+            </div>
+            <button onClick={() => navigateClue(1)} className="w-10 flex items-center justify-center text-cafe-espresso/30 hover:text-cafe-honey hover:bg-cafe-leather/5 transition-colors">
+              <ChevronRight size={20} />
+            </button>
           </motion.div>
 
-          {/* Active clue display on Desktop (below grid) */}
-          <div className="hidden xl:flex w-full max-w-[750px] mt-8 bg-white/70 backdrop-blur-xl rounded-2xl shadow-xl border border-white/60 overflow-hidden items-stretch p-1">
-            <button
-              onClick={() => {
-                // Previous clue roughly
-                const clues = board.clues[direction];
-                if (!activeClueInfo || !clues) return;
-                const idx = clues.findIndex(
-                  (c) => c.number === activeClueInfo.number,
-                );
-                if (idx > 0) {
-                  const prev = clues[idx - 1];
-                  setSelectedCell({ x: prev.x, y: prev.y });
+          {/* ── THE GRID ── */}
+          <motion.div
+            initial={{ opacity: 0, scale: 0.96 }}
+            animate={{ opacity: 1, scale: 1 }}
+            transition={{ duration: 0.5, ease: "easeOut" }}
+className="relative bg-transparent rounded-[2px] shadow-[0_8px_40px_rgba(44,24,16,0.15)]"
+            style={{ width: "min(100%, 680px)", aspectRatio: "1/1" }}
+          >
+            {/* lamp glow on grid */}
+            <div className="absolute -inset-4 bg-gradient-to-b from-cafe-lamp/10 via-transparent to-transparent rounded-lg pointer-events-none z-0" />
+
+            <div className="relative z-10 w-full h-full" style={{
+              display: "grid",
+              gridTemplateColumns: `repeat(${board.width}, 1fr)`,
+              gridTemplateRows: `repeat(${board.height}, 1fr)`,
+            }}>
+              {board.grid.map(cell => {
+                const isEmpty = cell.isHidden;
+                let isInWord = false;
+                if (selectedCell && !cell.isBlock && activeClueInfo) {
+                  if (direction === "across") {
+                    isInWord = cell.y === selectedCell.y && cell.x >= activeClueInfo.x && cell.x < activeClueInfo.x + activeClueInfo.length;
+                  } else {
+                    isInWord = cell.x === selectedCell.x && cell.y >= activeClueInfo.y && cell.y < activeClueInfo.y + activeClueInfo.length;
+                  }
                 }
-              }}
-              className="w-16 flex items-center justify-center rounded-xl hover:bg-white transition-all text-slate-400 hover:text-indigo-600 active:bg-slate-50 hover:shadow-sm"
-            >
-              <ChevronLeft size={28} />
-            </button>
-            <div
-              className="flex-1 px-6 py-4 flex items-center justify-center gap-4 cursor-pointer hover:bg-white/50 transition-colors rounded-xl"
-              onClick={() =>
-                setDirection((d) => (d === "across" ? "down" : "across"))
-              }
-            >
-              <div className="font-black text-indigo-500 text-2xl w-10 text-right shrink-0">
-                {activeClueInfo?.number}
-              </div>
-              <div className="text-slate-900 text-xl font-bold text-center leading-tight">
-                {activeClueInfo?.text || (
-                  <span className="text-slate-400 italic text-base">
-                    {t("noClue")}
-                  </span>
-                )}
-              </div>
-              <div className="text-slate-400 w-10 shrink-0 flex justify-end">
-                {direction === "across" ? (
-                  <ArrowRight size={24} />
-                ) : (
-                  <ArrowDown size={24} />
-                )}
-              </div>
+
+                const isSelected = selectedCell?.x === cell.x && selectedCell?.y === cell.y;
+                const ans = answers[`${cell.x},${cell.y}`] || "";
+                const isRecent = recentCell === `${cell.x},${cell.y}`;
+
+                return (
+                  <div key={`${cell.x}-${cell.y}`}
+                    onClick={() => !cell.isBlock && !cell.isHidden && handleCellClick(cell.x, cell.y)}
+                    className={clsx(
+                      "relative flex items-center justify-center select-none transition-all duration-75",
+                      cell.isBlock && !cell.isHidden && "bg-cafe-leather",
+                      isEmpty && "bg-transparent",
+                      !cell.isBlock && !cell.isHidden && isSelected && "bg-cafe-gold z-10 cursor-text ring-2 ring-cafe-honey",
+                      !cell.isBlock && !cell.isHidden && !isSelected && isInWord && "bg-cafe-latte/40 z-[5] ring-1 ring-cafe-leather cursor-pointer",
+                      !cell.isBlock && !cell.isHidden && !isSelected && !isInWord && "bg-cafe-paper ring-1 ring-cafe-leather cursor-pointer hover:bg-cafe-parchment/60",
+                      isRecent && "animate-ink-fill",
+                    )}
+                  >
+                    {cell.number && !cell.isBlock && !cell.isHidden && (
+                      <span className="absolute top-[1px] left-[2px] text-[9px] sm:text-[11px] font-display font-bold leading-none text-cafe-espresso/40 pointer-events-none select-none z-10">
+                        {cell.number}
+                      </span>
+                    )}
+                    {!cell.isBlock && !cell.isHidden && (
+                      <input type="text" maxLength={1} value={ans} readOnly={isCompleted}
+                        className={clsx(
+                          "absolute inset-0 w-full h-full text-center bg-transparent uppercase cursor-pointer outline-none caret-transparent font-mono font-bold",
+                          "text-[clamp(12px,3.5vw,28px)]",
+                          isCompleted && ans === cell.value ? "text-cafe-gold" : "text-cafe-leather",
+                        )}
+                        onClick={() => !cell.isBlock && !cell.isHidden && handleCellClick(cell.x, cell.y)}
+                        onChange={e => {
+                          if (isCompleted) return;
+                          const v = e.target.value.slice(-1);
+                          if (/^[a-zA-Zа-яА-ЯёЁ]$/.test(v)) {
+                            setAnswer(cell.x, cell.y, v.toUpperCase());
+                            const d = direction === "across" ? { dx: 1, dy: 0 } : { dx: 0, dy: 1 };
+                            let nx = cell.x + d.dx, ny = cell.y + d.dy;
+                            while (nx >= 0 && ny >= 0 && nx < board.width && ny < board.height) {
+                              const nc = getCell(nx, ny);
+                              if (nc && !nc.isBlock && !nc.isHidden) { setSelectedCell({ x: nx, y: ny }); break; }
+                              nx += d.dx; ny += d.dy;
+                            }
+                          } else if (v === "") setAnswer(cell.x, cell.y, "");
+                        }}
+                        onKeyDown={e => {
+                          if (isCompleted) return;
+                          if (e.key === "Backspace" && ans === "") {
+                            const d = direction === "across" ? { dx: -1, dy: 0 } : { dx: 0, dy: -1 };
+                            let nx = cell.x + d.dx, ny = cell.y + d.dy;
+                            while (nx >= 0 && ny >= 0 && nx < board.width && ny < board.height) {
+                              const nc = getCell(nx, ny);
+                              if (nc && !nc.isBlock && !nc.isHidden) { setSelectedCell({ x: nx, y: ny }); break; }
+                              nx += d.dx; ny += d.dy;
+                            }
+                          } else if (e.key.startsWith("Arrow")) {
+                            e.preventDefault();
+                            let { x, y } = cell;
+                            if (e.key === "ArrowUp") y = Math.max(0, y - 1);
+                            if (e.key === "ArrowDown") y = Math.min(board.height - 1, y + 1);
+                            if (e.key === "ArrowLeft") x = Math.max(0, x - 1);
+                            if (e.key === "ArrowRight") x = Math.min(board.width - 1, x + 1);
+                            const t = getCell(x, y);
+                            if (t && !t.isBlock && !t.isHidden) setSelectedCell({ x, y });
+                          }
+                        }}
+                      />
+                    )}
+                  </div>
+                );
+              })}
             </div>
-            <button
-              onClick={() => {
-                // Next clue roughly
-                const clues = board.clues[direction];
-                if (!activeClueInfo || !clues) return;
-                const idx = clues.findIndex(
-                  (c) => c.number === activeClueInfo.number,
-                );
-                if (idx < clues.length - 1) {
-                  const next = clues[idx + 1];
-                  setSelectedCell({ x: next.x, y: next.y });
-                }
-              }}
-              className="w-16 flex items-center justify-center rounded-xl hover:bg-white transition-all text-slate-400 hover:text-indigo-600 active:bg-slate-50 hover:shadow-sm"
-            >
-              <ChevronRight size={28} />
+          </motion.div>
+
+          {/* ── desktop clue bar (below grid) ── */}
+          <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.3 }}
+            className="hidden xl:flex w-full max-w-[680px] mt-5 items-stretch bg-cafe-paper/80 backdrop-blur-xl rounded-sm border border-cafe-leather/8 shadow-lg overflow-hidden">
+            <button onClick={() => navigateClue(-1)}
+              className="w-14 flex items-center justify-center hover:bg-cafe-leather/5 transition-all text-cafe-espresso/30 hover:text-cafe-honey">
+              <ChevronLeft size={24} />
             </button>
-          </div>
+            <div className="flex-1 px-5 py-3.5 flex items-center gap-4 cursor-pointer hover:bg-cafe-leather/[0.02] transition-colors"
+              onClick={() => setDirection(d => d === "across" ? "down" : "across")}>
+              <span className="font-display font-bold text-cafe-gold text-xl w-8 text-right shrink-0">{activeClueInfo?.number}</span>
+              <span className="font-body text-cafe-leather text-lg leading-snug">{activeClueInfo?.text || <span className="text-cafe-espresso/30 italic text-base">{t("noClue")}</span>}</span>
+              <span className="text-cafe-espresso/30 shrink-0 ml-auto">
+                {direction === "across" ? <ArrowRight size={20} /> : <ArrowDown size={20} />}
+              </span>
+            </div>
+            <button onClick={() => navigateClue(1)}
+              className="w-14 flex items-center justify-center hover:bg-cafe-leather/5 transition-all text-cafe-espresso/30 hover:text-cafe-honey">
+              <ChevronRight size={24} />
+            </button>
+          </motion.div>
         </div>
 
-        {/* Clues Pane */}
-        <div className="w-full xl:w-[500px] shrink-0 xl:h-[85vh] fixed bottom-0 left-0 right-0 xl:static h-[45vh] bg-white z-20 xl:z-10 shadow-[0_-20px_40px_rgba(0,0,0,0.1)] xl:shadow-sm border-t border-slate-300 xl:border flex flex-col overflow-hidden">
-          {["across", "down"].map((dir, i) => (
-            <div
-              key={dir}
-              className="bg-white flex flex-col flex-1 overflow-hidden border-b border-slate-300 last:border-b-0"
-            >
-              <div className="px-4 py-1.5 bg-[#52bad5] sticky top-0 z-10 shrink-0">
-                <h2 className="font-normal text-base uppercase tracking-wide flex items-center gap-2 text-white">
-                  {t(dir)} :
+        {/* ── RIGHT: CLUES PANEL ── */}
+        <div className="w-full xl:w-[480px] shrink-0 xl:h-[calc(100vh-7rem)] fixed bottom-0 left-0 right-0 xl:static h-[42vh] bg-cafe-paper z-20 xl:z-10 shadow-[0_-10px_30px_rgba(44,24,16,0.08)] xl:shadow-lg border-t border-cafe-leather/10 xl:border xl:border-cafe-leather/8 xl:rounded-sm flex flex-col overflow-hidden">
+
+          {(["across", "down"] as const).map(dir => (
+            <div key={dir} className="flex flex-col flex-1 overflow-hidden border-b border-cafe-leather/5 last:border-b-0">
+              {/* section header */}
+              <div className="px-4 py-2.5 bg-cafe-leather/[0.03] border-b border-cafe-leather/10 sticky top-0 z-10 shrink-0 flex items-center justify-between">
+                <h2 className="font-subhead text-sm font-bold uppercase tracking-[0.15em] text-cafe-leather/70 flex items-center gap-2">
+                  {dir === "across" ? <ArrowRight size={13} /> : <ArrowDown size={13} />}
+                  {t(dir)}
                 </h2>
+                <span className="font-mono text-[10px] text-cafe-leather/40">{board.clues[dir].length}</span>
               </div>
-              <div className="flex-1 overflow-y-auto p-0 flex flex-col relative scroll-smooth">
-                {board.clues[dir as "across" | "down"].map((clue) => {
-                  const isActive =
-                    activeClueInfo?.number === clue.number &&
-                    direction === dir;
+
+              {/* clue list */}
+              <div className="flex-1 overflow-y-auto scroll-smooth">
+                {board.clues[dir].map(clue => {
+                  const isActive = activeClueInfo?.number === clue.number && direction === dir;
+                  const refKey = `${dir}-${clue.number}`;
                   return (
-                    <div
-                      key={clue.number}
+                    <div key={clue.number}
+                      ref={el => { clueRefs.current[refKey] = el; }}
+                      onClick={() => { setSelectedCell({ x: clue.x, y: clue.y }); setDirection(dir); playSound("cell-select"); }}
                       className={clsx(
-                        "flex gap-3 text-[14.5px] px-3 py-[2px] cursor-pointer border",
+                        "flex gap-2.5 px-4 py-2.5 cursor-pointer transition-all duration-150 border-l-[3px]",
                         isActive
-                          ? "bg-[#cce3a6] border-slate-400 text-black shadow-none"
-                          : "border-transparent bg-white hover:bg-slate-50 text-black",
+                          ? "bg-cafe-gold/15 border-l-cafe-gold text-cafe-leather"
+                          : "border-l-transparent hover:bg-cafe-parchment/50 text-cafe-leather/85",
                       )}
-                      onClick={() => {
-                        setSelectedCell({ x: clue.x, y: clue.y });
-                        setDirection(dir as "across" | "down");
-                      }}
                     >
-                      <div className="flex flex-col items-end min-w-[24px] pr-1 shrink-0">
-                        <span className="font-bold">
-                          {clue.number}
-                        </span>
-                      </div>
-                      <span className="font-normal leading-snug">
-                        {clue.text || (
-                          <span className="text-slate-400 italic">
-                            {t("noClue")}
-                          </span>
-                        )}
+                      <span className={clsx("font-display font-bold text-sm min-w-[22px] text-right shrink-0", isActive ? "text-cafe-gold" : "text-cafe-leather/60")}>
+                        {clue.number}
+                      </span>
+                      <span className="font-body text-[13.5px] leading-relaxed text-cafe-espresso">
+                        {clue.text || <span className="text-cafe-espresso/35 italic">{t("noClue")}</span>}
                       </span>
                     </div>
                   );
