@@ -133,8 +133,22 @@ export function CanvasGrid({
     const lineWidth = 2;
     const padding = lineWidth / 2;
 
-    ctx.fillStyle = COLORS.gridLine;
+    ctx.fillStyle = COLORS.cellBg;
     ctx.fillRect(0, 0, size, size);
+    ctx.strokeStyle = COLORS.gridLine;
+    ctx.lineWidth = lineWidth;
+    for (let x = 0; x <= board.width; x++) {
+      ctx.beginPath();
+      ctx.moveTo(x * cellSize, 0);
+      ctx.lineTo(x * cellSize, size);
+      ctx.stroke();
+    }
+    for (let y = 0; y <= board.height; y++) {
+      ctx.beginPath();
+      ctx.moveTo(0, y * cellSize);
+      ctx.lineTo(size, y * cellSize);
+      ctx.stroke();
+    }
 
     for (let y = 0; y < board.height; y++) {
       for (let x = 0; x < board.width; x++) {
@@ -152,17 +166,15 @@ export function CanvasGrid({
         const inWord = isCellInWord(x, y);
 
         if (cell.isBlock && !cell.isHidden) {
-          bgColor = COLORS.blockBg;
+          bgColor = COLORS.cellBg;
+          strokeColor = 'transparent';
         } else if (cell.isHidden) {
-          bgColor = COLORS.gridLine;
+          bgColor = COLORS.cellBg;
           strokeColor = 'transparent';
         } else if (isSelected) {
           bgColor = COLORS.selected;
         } else if (inWord) {
           bgColor = COLORS.highlightWord;
-        } else if (!cell.value) {
-          bgColor = 'transparent';
-          strokeColor = 'transparent';
         } else {
           bgColor = COLORS.cellBg;
         }
