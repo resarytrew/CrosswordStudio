@@ -160,6 +160,9 @@ export function CanvasGrid({
           bgColor = COLORS.selected;
         } else if (inWord) {
           bgColor = COLORS.highlightWord;
+        } else if (!cell.value) {
+          bgColor = 'transparent';
+          strokeColor = 'transparent';
         } else {
           bgColor = COLORS.cellBg;
         }
