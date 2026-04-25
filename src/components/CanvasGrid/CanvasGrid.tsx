@@ -60,11 +60,11 @@ export function CanvasGrid({
       if (!point) return;
 
       const cell = getCell(gridMap, point.x, point.y);
-      if (!isCellPlayable(cell)) return;
+      if (!isCellPlayable(cell) && !(editable && cell)) return;
 
       onCellClick(point.x, point.y);
     },
-    [getCellFromPoint, gridMap, onCellClick]
+    [getCellFromPoint, gridMap, onCellClick, editable]
   );
 
   const handleTouchEnd = useCallback(
@@ -75,11 +75,11 @@ export function CanvasGrid({
       if (!point) return;
 
       const cell = getCell(gridMap, point.x, point.y);
-      if (!isCellPlayable(cell)) return;
+      if (!isCellPlayable(cell) && !(editable && cell)) return;
 
       onCellClick(point.x, point.y);
     },
-    [getCellFromPoint, gridMap, onCellClick]
+    [getCellFromPoint, gridMap, onCellClick, editable]
   );
 
   return (
