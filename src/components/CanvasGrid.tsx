@@ -35,15 +35,12 @@ interface CanvasGridProps {
 const COLORS = {
   background: '#FAFAF7',
   gridLine: '#2C1810',
-  cellBg: '#ffffff',
   blockBg: '#2C1810',
   letter: '#2C1810',
   number: '#666666',
   highlight: '#FBBF24',
   highlightWord: '#FEF3C7',
   selected: '#FCD34D',
-  hover: '#F5F5F4',
-  empty: '#FAFAF9',
   clueHighlight: '#FEF08A',
 };
 
@@ -167,7 +164,7 @@ export function CanvasGrid({
           ctx.fillStyle = COLORS.blockBg;
           ctx.fillRect(cellX, cellY, cellSize, cellSize);
         } else if (!cell.isHidden) {
-          let bgColor = COLORS.cellBg;
+          let bgColor = COLORS.background;
           if (isSelected) bgColor = COLORS.selected;
           else if (inWord) bgColor = COLORS.highlightWord;
           
