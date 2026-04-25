@@ -14,6 +14,7 @@ import {
 import { motion, AnimatePresence } from "motion/react";
 import { Steam, FloatingParticles, CoffeeBean } from "../components/CafeAnimations";
 import { CanvasGrid } from "../components/CanvasGrid";
+import { CanvasGrid } from "../components/CanvasGrid";
 
 /* ═══════════════════════════════════════════════════════════════
    SOLVER  — Читальный зал Кафе Эрудитов
@@ -134,6 +135,35 @@ export function Solver() {
     }
     return null;
   }, [selectedCell, direction, board]);
+
+  const getWordBounds = useCallback((x: number, y: number, dir: 'across' | 'down') => {
+    if (!board) return null;
+    const cell = getCell(x, y);
+    if (!cell || cell.isBlock || cell.isHidden) return null;
+    
+    let startX = x, startY = y;
+    let endX = x, endY = y;
+    
+    if (dir === 'across') {
+      while (startX > 0 && !getCell(startX - 1, y)?.isBlock && !getCell(startX - 1, y)?.isHidden) startX--;
+      while (endX < board.width - 1 && !getCell(endX + 1, y)?.isBlock && !getCell(endX + 1, y)?.isHidden) endX++;
+    } else {
+      while (startY > 0 && !getCell(x, startY - 1)?.isBlock && !getCell(x, startY - 1)?.isHidden) startY--;
+      while (endY < board.height - 1 && !getCell(x, endY + 1)?.isBlock && !getCell(x, endY + 1)?.isHidden) endY++;
+    }
+    
+    return { startX, startY, endX, endY, length: dir === 'across' ? endX - startX + 1 : endY - startY + 1 };
+  }, [board, getCell]);
+
+  const allWordBounds = React.useMemo(() => {
+    if (!selectedCell || !board) return { across: null, down: null };
+    const cell = getCell(selectedCell.x, selectedCell.y);
+    if (!cell || cell.isBlock || cell.isHidden) return { across: null, down: null };
+    return {
+      across: getWordBounds(selectedCell.x, selectedCell.y, 'across'),
+      down: getWordBounds(selectedCell.x, selectedCell.y, 'down')
+    };
+  }, [selectedCell, board, getWordBounds]);
 
   /* scroll active clue into view */
   useEffect(() => {
@@ -371,114 +401,20 @@ export function Solver() {
             <button onClick={() => navigateClue(1)} className="w-10 flex items-center justify-center text-cafe-espresso/30 hover:text-cafe-honey hover:bg-cafe-leather/5 transition-colors">
               <ChevronRight size={20} />
             </button>
-          </motion.div>
+</motion.div>
 
           {/* ── THE GRID ── */}
-          <motion.div
-            initial={{ opacity: 0, scale: 0.96 }}
-            animate={{ opacity: 1, scale: 1 }}
-            transition={{ duration: 0.5, ease: "easeOut" }}
-className="relative bg-transparent rounded-[2px] shadow-[0_8px_40px_rgba(44,24,16,0.15)]"
-            style={{ width: "min(100%, 680px)", aspectRatio: "1/1" }}
-          >
-            {/* lamp glow on grid */}
-            <div className="absolute -inset-4 bg-gradient-to-b from-cafe-lamp/10 via-transparent to-transparent rounded-lg pointer-events-none z-0" />
-
-            <div className="relative z-10 w-full h-full" style={{
-              display: "grid",
-              gridTemplateColumns: `repeat(${board.width}, 1fr)`,
-              gridTemplateRows: `repeat(${board.height}, 1fr)`,
-            }}>
-              {board.grid.map(cell => {
-                const isEmpty = cell.isHidden;
-                let isInWord = false;
-                if (selectedCell && !cell.isBlock && activeClueInfo) {
-                  if (direction === "across") {
-                    isInWord = cell.y === selectedCell.y && cell.x >= activeClueInfo.x && cell.x < activeClueInfo.x + activeClueInfo.length;
-                  } else {
-                    isInWord = cell.x === selectedCell.x && cell.y >= activeClueInfo.y && cell.y < activeClueInfo.y + activeClueInfo.length;
-                  }
-                }
-
-                const isSelected = selectedCell?.x === cell.x && selectedCell?.y === cell.y;
-                const ans = answers[`${cell.x},${cell.y}`] || "";
-                const isRecent = recentCell === `${cell.x},${cell.y}`;
-
-                return (
-                  <div key={`${cell.x}-${cell.y}`}
-                    onClick={() => !cell.isBlock && !cell.isHidden && handleCellClick(cell.x, cell.y)}
-                    className={clsx(
-                      "relative flex items-center justify-center select-none overflow-hidden transition-all duration-150 cursor-pointer",
-                      cell.isBlock && !cell.isHidden && "bg-cafe-leather",
-                      isEmpty && "bg-transparent",
-                      !cell.isBlock && !cell.isHidden && isSelected && "bg-cafe-gold/30 z-10 scale-[1.03] shadow-lg ring-2 ring-cafe-honey",
-                      !cell.isBlock && !cell.isHidden && !isSelected && isInWord && "bg-cafe-gold/15 z-[5] ring-1 ring-cafe-honey/60",
-                      !cell.isBlock && !cell.isHidden && !isSelected && !isInWord && "bg-cafe-paper ring-1 ring-cafe-leather",
-                      isRecent && "animate-ink-fill",
-                    )}
-                  >
-                    {cell.number && !cell.isBlock && !cell.isHidden && (
-                      <span className={clsx(
-                        "absolute top-[1px] left-[2px] text-[9px] sm:text-[10px] font-display font-bold leading-none pointer-events-none select-none z-10 transition-colors",
-                        isSelected || isInWord ? "text-cafe-honey" : "text-cafe-espresso/40"
-                      )}>
-                        {cell.number}
-                      </span>
-                    )}
-                    {!cell.isBlock && !cell.isHidden && (
-                      <input type="text" maxLength={1} value={ans} readOnly={isCompleted}
-                        className={clsx(
-                          "absolute inset-0 w-full h-full text-center bg-transparent uppercase cursor-pointer outline-none caret-transparent font-mono",
-                          "text-[clamp(12px,3.5vw,28px)]",
-                          isCompleted && ans === cell.value 
-                            ? "text-cafe-gold font-bold" 
-                            : isSelected || isInWord 
-                              ? "text-cafe-honey font-bold" 
-                              : "text-cafe-leather",
-                        )}
-                        onClick={() => !cell.isBlock && !cell.isHidden && handleCellClick(cell.x, cell.y)}
-                        onChange={e => {
-                          if (isCompleted) return;
-                          const v = e.target.value.slice(-1);
-                          if (/^[a-zA-Zа-яА-ЯёЁ]$/.test(v)) {
-                            setAnswer(cell.x, cell.y, v.toUpperCase());
-                            const d = direction === "across" ? { dx: 1, dy: 0 } : { dx: 0, dy: 1 };
-                            let nx = cell.x + d.dx, ny = cell.y + d.dy;
-                            while (nx >= 0 && ny >= 0 && nx < board.width && ny < board.height) {
-                              const nc = getCell(nx, ny);
-                              if (nc && !nc.isBlock && !nc.isHidden) { setSelectedCell({ x: nx, y: ny }); break; }
-                              nx += d.dx; ny += d.dy;
-                            }
-                          } else if (v === "") setAnswer(cell.x, cell.y, "");
-                        }}
-                        onKeyDown={e => {
-                          if (isCompleted) return;
-                          if (e.key === "Backspace" && ans === "") {
-                            const d = direction === "across" ? { dx: -1, dy: 0 } : { dx: 0, dy: -1 };
-                            let nx = cell.x + d.dx, ny = cell.y + d.dy;
-                            while (nx >= 0 && ny >= 0 && nx < board.width && ny < board.height) {
-                              const nc = getCell(nx, ny);
-                              if (nc && !nc.isBlock && !nc.isHidden) { setSelectedCell({ x: nx, y: ny }); break; }
-                              nx += d.dx; ny += d.dy;
-                            }
-                          } else if (e.key.startsWith("Arrow")) {
-                            e.preventDefault();
-                            let { x, y } = cell;
-                            if (e.key === "ArrowUp") y = Math.max(0, y - 1);
-                            if (e.key === "ArrowDown") y = Math.min(board.height - 1, y + 1);
-                            if (e.key === "ArrowLeft") x = Math.max(0, x - 1);
-                            if (e.key === "ArrowRight") x = Math.min(board.width - 1, x + 1);
-                            const t = getCell(x, y);
-                            if (t && !t.isBlock && !t.isHidden) setSelectedCell({ x, y });
-                          }
-                        }}
-                      />
-                    )}
-                  </div>
-                );
-              })}
-            </div>
-          </motion.div>
+          <div className="w-full max-w-[680px]" style={{ aspectRatio: '1/1' }}>
+            <CanvasGrid
+              board={board}
+              selectedCell={selectedCell}
+              direction={direction}
+              allWordBounds={allWordBounds}
+              onCellClick={handleCellClick}
+              answers={answers}
+isCompleted={isCompleted}
+            />
+          </div>
 
           {/* ── desktop clue bar (below grid) ── */}
           <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.3 }}
