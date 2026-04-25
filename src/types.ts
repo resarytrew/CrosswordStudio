@@ -3,9 +3,16 @@ export interface Crossword {
   authorId: string;
   title: string;
   boardState: string; // JSON string of BoardState
+  answersHash?: string; // SHA-256 hash of answers (for verification without exposing values)
   createdAt: number;
   updatedAt: number;
   isPublished: boolean;
+}
+
+export interface CrosswordAnswers {
+  crosswordId: string;
+  authorId: string;
+  answers: string; // JSON Record<string, string> mapping "x,y" to letter
 }
 
 export interface BoardState {
@@ -23,7 +30,7 @@ export interface GridCell {
   y: number;
   isBlock: boolean;
   isHidden?: boolean;
-  value: string; // The correct letter
+  value?: string; // Only available to author in crosswordAnswers
   number: number | null; // e.g., 1, 2, 3...
 }
 

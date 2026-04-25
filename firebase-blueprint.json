@@ -14,6 +14,17 @@
       },
       "required": ["authorId", "title", "boardState", "createdAt", "updatedAt", "isPublished"]
     },
+    "crosswordAnswers": {
+      "title": "Crossword Answers",
+      "description": "Private answers for a crossword - only author can access.",
+      "type": "object",
+      "properties": {
+        "crosswordId": { "type": "string" },
+        "authorId": { "type": "string" },
+        "answers": { "type": "string", "description": "JSON Record of x,y -> letter" }
+      },
+      "required": ["crosswordId", "authorId", "answers"]
+    },
     "progress": {
       "title": "Crossword Progress",
       "description": "A user's progress on a specific crossword.",
@@ -33,6 +44,10 @@
     "/crosswords/{crosswordId}": {
       "schema": { "$ref": "#/entities/crossword" },
       "description": "Stores created crosswords."
+    },
+    "/crosswordAnswers/{crosswordId}": {
+      "schema": { "$ref": "#/entities/crosswordAnswers" },
+      "description": "Private answers - only author can read."
     },
     "/progress/{progressId}": {
       "schema": { "$ref": "#/entities/progress" },

@@ -7,6 +7,7 @@ import { useLanguage } from '../contexts/LanguageContext';
 import { useCafe } from '../contexts/CafeContext';
 import { BoardState, Clue, Crossword, GridCell } from '../types';
 import { updateGridNumbers } from '../lib/gridUtils';
+import { computeAnswersHash } from '../lib/crypto';
 import { Save, Share2, ArrowLeft, ArrowRight, ArrowDown, Trash2, LayoutGrid, Hash, CheckSquare, AlertTriangle, Bookmark, Sparkles, Image } from 'lucide-react';
 import { LampGlow, InkDrop, BookSpine } from '../components/CafeAnimations';
 import { CanvasGrid } from '../components/CanvasGrid';
@@ -58,9 +59,11 @@ export function Editor() {
     if (!id || !user) return;
     setSaving(true);
     try {
+      const answersHash = computeAnswersHash(currentBoard);
       const updates: Partial<Crossword> = {
         title: currentTitle,
         boardState: JSON.stringify(currentBoard),
+        answersHash,
         updatedAt: Date.now()
       };
       if (isPublished !== undefined) {

@@ -14,6 +14,7 @@ import {
 import { motion, AnimatePresence } from "motion/react";
 import { Steam, FloatingParticles, CoffeeBean, ClockTick, SuccessBurst } from "../components/CafeAnimations";
 import { CanvasGrid } from "../components/CanvasGrid";
+import { hashString } from "../lib/crypto";
 
 /* ═══════════════════════════════════════════════════════════════
    SOLVER  — Читальный зал Кафе Эрудитов
@@ -80,17 +81,53 @@ export function Solver() {
     return () => clearInterval(iv);
   }, [isCompleted, cw]);
 
-  /* ── COMPLETION CHECK ── */
-  useEffect(() => {
-    if (!board || isCompleted) return;
-    let ok = true;
-    for (const cell of board.grid) {
-      if (!cell.isBlock && !cell.isHidden) {
-        if ((answers[`${cell.x},${cell.y}`] || "") !== cell.value) { ok = false; break; }
+  /* ── COMPLETION CHECK (via hash) ── */
+  const checkCompletion = useCallback(async () => {
+    if (!board || isCompleted || !user || !id) return;
+    
+    const totalPlayable = board.grid.filter(c => !c.isBlock && !c.isHidden).length;
+    const filledCount = Object.keys(answers).filter(k => answers[k] && answers[k] !== '').length;
+    
+    if (filledCount < totalPlayable) return;
+    
+    try {
+      const cwDoc = await getDoc(doc(db, "crosswords", id));
+      if (!cwDoc.exists) return;
+      
+      const crossword = cwDoc.data() as Crossword;
+      const savedHash = crossword.answersHash;
+      
+      if (!savedHash) {
+        console.warn("No answersHash found for crossword");
+        return;
       }
+      
+      const userHash = hashUserAnswers(answers);
+      
+      if (userHash === savedHash && !isCompleted) {
+        setIsCompleted(true);
+        playSound("success");
+      }
+    } catch (error) {
+      console.error("Verification failed:", error);
     }
-    if (ok && Object.keys(answers).length > 0) { setIsCompleted(true); playSound("success"); }
-  }, [answers, board, isCompleted]);
+  }, [board, isCompleted, user, id, answers, playSound]);
+
+  function hashUserAnswers(userAnswers: Record<string, string>): string {
+    const sorted = Object.keys(userAnswers).sort();
+    const combined = sorted
+      .filter(k => userAnswers[k] && userAnswers[k] !== '')
+      .map(k => `${k}:${userAnswers[k].toUpperCase()}`)
+      .join('|');
+    return hashString(combined);
+  }
+
+  useEffect(() => {
+    const timeoutId = setTimeout(() => {
+      checkCompletion();
+    }, 500);
+    return () => clearTimeout(timeoutId);
+  }, [answers, checkCompletion]);
 
   /* ── SAVE PROGRESS ── */
   useEffect(() => {

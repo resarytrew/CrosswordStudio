@@ -12,11 +12,12 @@ service cloud.firestore {
     function existing() { return resource.data; }
 
     function isValidCrossword(data) {
-      return data.keys().hasAll(['authorId', 'title', 'boardState', 'createdAt', 'updatedAt', 'isPublished']) 
-        && data.keys().size() == 6
+      return data.keys().hasAll(['authorId', 'title', 'boardState', 'answersHash', 'createdAt', 'updatedAt', 'isPublished']) 
+        && data.keys().size() == 7
         && data.authorId is string && data.authorId == request.auth.uid
         && data.title is string && data.title.size() <= 100
         && data.boardState is string && data.boardState.size() <= 500000
+        && data.answersHash is string && data.answersHash.size() <= 64
         && data.createdAt is number
         && data.updatedAt is number
         && data.isPublished is bool;
@@ -27,6 +28,7 @@ service cloud.firestore {
         && data.createdAt == old.createdAt
         && data.title is string && data.title.size() <= 100
         && data.boardState is string && data.boardState.size() <= 500000
+        && data.answersHash is string && data.answersHash.size() <= 64
         && data.updatedAt is number
         && data.isPublished is bool;
     }
@@ -42,7 +44,7 @@ service cloud.firestore {
       allow create: if isValidId(crosswordId) && isSignedIn() && isValidCrossword(incoming());
       
       allow update: if isValidId(crosswordId) && isSignedIn() && existing().authorId == request.auth.uid && (
-        incoming().diff(existing()).affectedKeys().hasOnly(['title', 'boardState', 'updatedAt', 'isPublished']) &&
+        incoming().diff(existing()).affectedKeys().hasAny(['title', 'boardState', 'answersHash', 'updatedAt', 'isPublished']) &&
         isValidCrosswordUpdate(incoming(), existing())
       );
 
@@ -74,10 +76,10 @@ service cloud.firestore {
       allow list: if isSignedIn() && resource.data.userId == request.auth.uid;
       
       allow create: if isValidId(progressId) && isSignedIn() && isValidProgress(incoming());
-        
+         
       allow update: if isValidId(progressId) && isSignedIn() && existing().userId == request.auth.uid && (
          incoming().diff(existing()).affectedKeys().hasOnly(['answers', 'timer', 'isCompleted', 'lastUpdated']) &&
-         isValidProgressUpdate(incoming(), existing())
+         isValidProgressUpdate(incoming(), old)
       );
 
       allow delete: if isValidId(progressId) && isSignedIn() && existing().userId == request.auth.uid;
