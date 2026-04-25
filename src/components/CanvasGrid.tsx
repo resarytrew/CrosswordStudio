@@ -128,9 +128,28 @@ export function CanvasGrid({
     
     const cellSize = cellSizeRef.current;
     const lineWidth = 2;
+    const padding = lineWidth;
 
     ctx.fillStyle = COLORS.background;
     ctx.fillRect(0, 0, size, size);
+
+    for (let y = 0; y < board.height; y++) {
+      for (let x = 0; x < board.width; x++) {
+        const cell = board.grid.find(c => c.x === x && c.y === y);
+        if (!cell) continue;
+
+        const cellX = x * cellSize;
+        const cellY = y * cellSize;
+
+        if (cell.isBlock && !cell.isHidden) {
+          ctx.fillStyle = COLORS.blockBg;
+          ctx.fillRect(cellX, cellY, cellSize, cellSize);
+        } else if (!cell.isHidden) {
+          ctx.fillStyle = COLORS.background;
+          ctx.fillRect(cellX + padding, cellY + padding, cellSize - padding, cellSize - padding);
+        }
+      }
+    }
 
     ctx.strokeStyle = COLORS.gridLine;
     ctx.lineWidth = lineWidth;
@@ -149,10 +168,31 @@ export function CanvasGrid({
       ctx.stroke();
     }
 
+    ctx.fillStyle = COLORS.background;
     for (let y = 0; y < board.height; y++) {
       for (let x = 0; x < board.width; x++) {
         const cell = board.grid.find(c => c.x === x && c.y === y);
-        if (!cell) continue;
+        if (!cell || !cell.isHidden) continue;
+
+        const cellX = x * cellSize;
+        const cellY = y * cellSize;
+
+        const rightCell = board.grid.find(c => c.x === x + 1 && c.y === y);
+        if (rightCell && rightCell.isHidden) {
+          ctx.fillRect(cellX + cellSize - lineWidth, cellY, lineWidth, cellSize);
+        }
+
+        const bottomCell = board.grid.find(c => c.x === x && c.y === y + 1);
+        if (bottomCell && bottomCell.isHidden) {
+          ctx.fillRect(cellX, cellY + cellSize - lineWidth, cellSize, lineWidth);
+        }
+      }
+    }
+
+    for (let y = 0; y < board.height; y++) {
+      for (let x = 0; x < board.width; x++) {
+        const cell = board.grid.find(c => c.x === x && c.y === y);
+        if (!cell || cell.isBlock || cell.isHidden) continue;
 
         const cellX = x * cellSize;
         const cellY = y * cellSize;
@@ -160,33 +200,26 @@ export function CanvasGrid({
         const isSelected = selectedCell?.x === x && selectedCell?.y === y;
         const inWord = isCellInWord(x, y);
 
-        if (cell.isBlock && !cell.isHidden) {
-          ctx.fillStyle = COLORS.blockBg;
-          ctx.fillRect(cellX, cellY, cellSize, cellSize);
-        } else if (!cell.isHidden) {
-          let bgColor = COLORS.background;
-          if (isSelected) bgColor = COLORS.selected;
-          else if (inWord) bgColor = COLORS.highlightWord;
-          
-          ctx.fillStyle = bgColor;
-          ctx.fillRect(cellX, cellY, cellSize, cellSize);
+        if (isSelected || inWord) {
+          ctx.fillStyle = isSelected ? COLORS.selected : COLORS.highlightWord;
+          ctx.fillRect(cellX + lineWidth, cellY + lineWidth, cellSize - lineWidth, cellSize - lineWidth);
+        }
 
-          if (cell.number) {
-            ctx.fillStyle = COLORS.number;
-            ctx.font = FONTS.number;
-            ctx.textAlign = 'left';
-            ctx.textBaseline = 'top';
-            ctx.fillText(cell.number.toString(), cellX + 3, cellY + 2);
-          }
+        if (cell.number) {
+          ctx.fillStyle = COLORS.number;
+          ctx.font = FONTS.number;
+          ctx.textAlign = 'left';
+          ctx.textBaseline = 'top';
+          ctx.fillText(cell.number.toString(), cellX + 3, cellY + 2);
+        }
 
-          const displayValue = editable ? cell.value : (answers[`${x},${y}`] || '');
-          if (displayValue) {
-            ctx.fillStyle = isCompleted && cell.value === displayValue ? COLORS.highlight : COLORS.letter;
-            ctx.font = FONTS.letter;
-            ctx.textAlign = 'center';
-            ctx.textBaseline = 'middle';
-            ctx.fillText(displayValue, cellX + cellSize / 2, cellY + cellSize / 2);
-          }
+        const displayValue = editable ? cell.value : (answers[`${x},${y}`] || '');
+        if (displayValue) {
+          ctx.fillStyle = isCompleted && cell.value === displayValue ? COLORS.highlight : COLORS.letter;
+          ctx.font = FONTS.letter;
+          ctx.textAlign = 'center';
+          ctx.textBaseline = 'middle';
+          ctx.fillText(displayValue, cellX + cellSize / 2, cellY + cellSize / 2);
         }
       }
     }
