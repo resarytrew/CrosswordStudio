@@ -154,7 +154,7 @@ export function CanvasGrid({
         if (cell.isBlock && !cell.isHidden) {
           bgColor = COLORS.blockBg;
         } else if (cell.isHidden) {
-          bgColor = COLORS.empty;
+          bgColor = COLORS.gridLine;
           strokeColor = 'transparent';
         } else if (isSelected) {
           bgColor = COLORS.selected;
