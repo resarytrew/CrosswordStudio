@@ -10,7 +10,7 @@ import { createEmptyGrid, updateGridNumbers } from '../lib/gridUtils';
 import { Plus, Play, PenTool, BookOpen, Coffee, Feather, Clock, Grid3X3, Sparkles, BookMarked, ArrowRight } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { templates, Template } from '../lib/templates';
-import { Steam, FloatingParticles, LampGlow, CoffeeBean } from '../components/CafeAnimations';
+import { Steam, FloatingParticles, LampGlow, CoffeeBean, BookSpine, PageCurl, SuccessBurst } from '../components/CafeAnimations';
 
 /* ─────────────── helpers ─────────────── */
 function MiniGrid({ tpl }: { tpl: Template }) {
@@ -218,6 +218,7 @@ export function Dashboard() {
         animate={{ opacity: 1, y: 0 }}
         className="mb-10 relative overflow-hidden rounded-sm bg-cafe-leather text-cafe-paper p-8 sm:p-10 shadow-xl"
       >
+        <PageCurl className="absolute top-0 right-0 w-16 h-16" />
         {/* фон — сетка кроссворда */}
         <div className="absolute inset-0 opacity-[0.06]">
           <div className="absolute inset-0 grid grid-cols-[repeat(20,1fr)] gap-[1px]">
@@ -277,14 +278,17 @@ export function Dashboard() {
       {/* ═══ МЕНЮ КАФЕ — ШАБЛОНЫ ═══ */}
       <section className="mb-12">
         <div className="flex items-end justify-between mb-6">
-          <div>
-            <div className="flex items-center gap-2 mb-1">
-              <div className="w-6 h-px bg-cafe-gold" />
-              <span className="font-subhead text-xs uppercase tracking-[0.2em] text-cafe-gold font-semibold">
-                {language === 'ru' ? 'Меню' : 'Menu'}
-              </span>
+          <div className="flex items-center gap-3">
+            <BookSpine className="text-cafe-leather/30" />
+            <div>
+              <div className="flex items-center gap-2 mb-1">
+                <div className="w-6 h-px bg-cafe-gold" />
+                <span className="font-subhead text-xs uppercase tracking-[0.2em] text-cafe-gold font-semibold">
+                  {language === 'ru' ? 'Меню' : 'Menu'}
+                </span>
+              </div>
+              <h2 className="font-display text-2xl font-bold text-cafe-leather">{t('templates')}</h2>
             </div>
-            <h2 className="font-display text-2xl font-bold text-cafe-leather">{t('templates')}</h2>
           </div>
           <p className="font-body text-sm text-cafe-espresso/50 hidden sm:block">{t('templatesDesc')}</p>
         </div>
@@ -323,14 +327,17 @@ export function Dashboard() {
       {/* ═══ КНИЖНАЯ ПОЛКА — МОИ КРОССВОРДЫ ═══ */}
       <section>
         <div className="flex items-end justify-between mb-6">
-          <div>
-            <div className="flex items-center gap-2 mb-1">
-              <div className="w-6 h-px bg-cafe-gold" />
-              <span className="font-subhead text-xs uppercase tracking-[0.2em] text-cafe-gold font-semibold">
-                {language === 'ru' ? 'Полка' : 'Shelf'}
-              </span>
+          <div className="flex items-center gap-3">
+            <BookSpine className="text-cafe-leather/30" />
+            <div>
+              <div className="flex items-center gap-2 mb-1">
+                <div className="w-6 h-px bg-cafe-gold" />
+                <span className="font-subhead text-xs uppercase tracking-[0.2em] text-cafe-gold font-semibold">
+                  {language === 'ru' ? 'Полка' : 'Shelf'}
+                </span>
+              </div>
+              <h2 className="font-display text-2xl font-bold text-cafe-leather">{t('dashboard')}</h2>
             </div>
-            <h2 className="font-display text-2xl font-bold text-cafe-leather">{t('dashboard')}</h2>
           </div>
         </div>
 
@@ -390,6 +397,7 @@ export function Dashboard() {
             >
               <Feather size={20} />
               {t('startBuilding')}
+              <PageCurl className="ml-2 -rotate-12" />
             </motion.button>
           </motion.div>
         ) : (

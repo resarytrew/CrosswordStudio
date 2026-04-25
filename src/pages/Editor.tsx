@@ -8,7 +8,7 @@ import { useCafe } from '../contexts/CafeContext';
 import { BoardState, Clue, Crossword, GridCell } from '../types';
 import { updateGridNumbers } from '../lib/gridUtils';
 import { Save, Share2, ArrowLeft, ArrowRight, ArrowDown, Trash2, LayoutGrid, Hash, CheckSquare, AlertTriangle, Bookmark, Sparkles, Image } from 'lucide-react';
-import { LampGlow, InkDrop } from '../components/CafeAnimations';
+import { LampGlow, InkDrop, BookSpine } from '../components/CafeAnimations';
 import { CanvasGrid } from '../components/CanvasGrid';
 import clsx from 'clsx';
 import { motion } from 'motion/react';
@@ -361,6 +361,7 @@ export function Editor() {
     <div className="flex flex-col h-full bg-cafe-cream overflow-hidden" onKeyDown={handleKeyDown} tabIndex={0}>
       <div className="h-16 flex items-center justify-between px-6 bg-cafe-paper border-b border-cafe-leather/10 shadow-sm shrink-0 relative z-20">
         <div className="flex items-center gap-4">
+          <BookSpine className="text-cafe-leather/30" />
           <motion.button 
              whileHover={{ scale: 1.05 }}
              whileTap={{ scale: 0.95 }}

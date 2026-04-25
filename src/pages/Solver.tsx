@@ -8,11 +8,11 @@ import { useCafe } from "../contexts/CafeContext";
 import { BoardState, Crossword, Progress } from "../types";
 import clsx from "clsx";
 import {
-  Clock, CheckCircle2, ArrowRight, ArrowDown, ArrowLeft,
-  ChevronLeft, ChevronRight, Coffee, BookOpen, Feather, Trophy,
+  CheckCircle2, ArrowRight, ArrowDown, ArrowLeft,
+  ChevronLeft, ChevronRight, BookOpen, Feather, Trophy,
 } from "lucide-react";
 import { motion, AnimatePresence } from "motion/react";
-import { Steam, FloatingParticles, CoffeeBean } from "../components/CafeAnimations";
+import { Steam, FloatingParticles, CoffeeBean, ClockTick, SuccessBurst } from "../components/CafeAnimations";
 import { CanvasGrid } from "../components/CanvasGrid";
 
 /* ═══════════════════════════════════════════════════════════════
@@ -287,6 +287,7 @@ export function Solver() {
               className="relative bg-cafe-paper rounded-sm shadow-2xl max-w-md w-full mx-4 overflow-hidden"
             >
               <div className="h-1.5 bg-gradient-to-r from-cafe-gold via-cafe-lamp to-cafe-gold" />
+              <SuccessBurst className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2" />
 
               <div className="p-10 sm:p-12 flex flex-col items-center text-center">
                 <div className="relative mb-6">
@@ -363,7 +364,7 @@ export function Solver() {
 
           {/* timer */}
           <div className="flex items-center gap-1.5 font-mono text-sm font-bold text-cafe-leather bg-cafe-parchment/40 px-2.5 py-1 rounded-sm border border-cafe-leather/8">
-            <Clock size={13} className="text-cafe-gold" />
+            <ClockTick className="text-cafe-gold" />
             <span>{formatTime(timer)}</span>
           </div>
 
