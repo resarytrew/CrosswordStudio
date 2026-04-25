@@ -33,7 +33,7 @@ interface CanvasGridProps {
 }
 
 const COLORS = {
-  background: '#ffffff',
+  background: '#FAFAF7',
   gridLine: '#2C1810',
   cellBg: '#ffffff',
   blockBg: '#2C1810',
@@ -131,12 +131,14 @@ export function CanvasGrid({
     
     const cellSize = cellSizeRef.current;
     const lineWidth = 2;
-    const padding = lineWidth / 2;
 
-    ctx.fillStyle = COLORS.cellBg;
+    ctx.fillStyle = COLORS.background;
     ctx.fillRect(0, 0, size, size);
+
     ctx.strokeStyle = COLORS.gridLine;
     ctx.lineWidth = lineWidth;
+    ctx.lineCap = 'square';
+
     for (let x = 0; x <= board.width; x++) {
       ctx.beginPath();
       ctx.moveTo(x * cellSize, 0);
@@ -158,51 +160,36 @@ export function CanvasGrid({
         const cellX = x * cellSize;
         const cellY = y * cellSize;
 
-        let bgColor = COLORS.cellBg;
-        let strokeColor = COLORS.gridLine;
-        let lineW = lineWidth;
-        
         const isSelected = selectedCell?.x === x && selectedCell?.y === y;
         const inWord = isCellInWord(x, y);
 
         if (cell.isBlock && !cell.isHidden) {
-          bgColor = COLORS.cellBg;
-          strokeColor = 'transparent';
-        } else if (cell.isHidden) {
-          bgColor = COLORS.cellBg;
-          strokeColor = 'transparent';
-        } else if (isSelected) {
-          bgColor = COLORS.selected;
-        } else if (inWord) {
-          bgColor = COLORS.highlightWord;
-        } else {
-          bgColor = COLORS.cellBg;
-        }
+          ctx.fillStyle = COLORS.blockBg;
+          ctx.fillRect(cellX, cellY, cellSize, cellSize);
+        } else if (!cell.isHidden) {
+          let bgColor = COLORS.cellBg;
+          if (isSelected) bgColor = COLORS.selected;
+          else if (inWord) bgColor = COLORS.highlightWord;
+          
+          ctx.fillStyle = bgColor;
+          ctx.fillRect(cellX, cellY, cellSize, cellSize);
 
-        ctx.fillStyle = bgColor;
-        ctx.fillRect(cellX + padding, cellY + padding, cellSize - lineWidth, cellSize - lineWidth);
+          if (cell.number) {
+            ctx.fillStyle = COLORS.number;
+            ctx.font = FONTS.number;
+            ctx.textAlign = 'left';
+            ctx.textBaseline = 'top';
+            ctx.fillText(cell.number.toString(), cellX + 3, cellY + 2);
+          }
 
-        if (strokeColor !== 'transparent') {
-          ctx.strokeStyle = strokeColor;
-          ctx.lineWidth = lineW;
-          ctx.strokeRect(cellX + padding, cellY + padding, cellSize - lineWidth, cellSize - lineWidth);
-        }
-
-        if (cell.number && !cell.isBlock && !cell.isHidden) {
-          ctx.fillStyle = COLORS.number;
-          ctx.font = FONTS.number;
-          const textX = cellX + 4;
-          const textY = cellY + 12;
-          ctx.fillText(cell.number.toString(), textX, textY);
-        }
-
-        const displayValue = editable ? cell.value : (answers[`${x},${y}`] || '');
-        if (displayValue && !cell.isBlock && !cell.isHidden) {
-          ctx.fillStyle = isCompleted && cell.value === displayValue ? COLORS.highlight : COLORS.letter;
-          ctx.font = FONTS.letter;
-          ctx.textAlign = 'center';
-          ctx.textBaseline = 'middle';
-          ctx.fillText(displayValue, cellX + cellSize / 2, cellY + cellSize / 2 + 2);
+          const displayValue = editable ? cell.value : (answers[`${x},${y}`] || '');
+          if (displayValue) {
+            ctx.fillStyle = isCompleted && cell.value === displayValue ? COLORS.highlight : COLORS.letter;
+            ctx.font = FONTS.letter;
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+            ctx.fillText(displayValue, cellX + cellSize / 2, cellY + cellSize / 2);
+          }
         }
       }
     }
