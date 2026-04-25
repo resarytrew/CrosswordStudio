@@ -10,11 +10,19 @@ import { Download, Share2, Instagram, Twitter, Copy, Check, Palette, Sparkles, T
 import { motion, AnimatePresence } from 'motion/react';
 
 type WordArtStyle = 'classic' | 'neon' | 'minimalist' | 'vintage' | 'modern';
+type ExportType = 'filled' | 'empty' | 'clues';
 
 interface WordArtStyleOption {
   id: WordArtStyle;
   name: string;
   description: string;
+  icon: React.ReactNode;
+}
+
+interface ExportTypeOption {
+  id: ExportType;
+  name: string;
+  nameRu: string;
   icon: React.ReactNode;
 }
 
@@ -24,6 +32,12 @@ const styles: WordArtStyleOption[] = [
   { id: 'minimalist', name: 'Minimal', description: 'Clean and simple', icon: <Palette size={20} /> },
   { id: 'vintage', name: 'Vintage', description: 'Old newspaper feel', icon: <Sunrise size={20} /> },
   { id: 'modern', name: 'Modern', description: 'Contemporary design', icon: <Sparkles size={20} /> },
+];
+
+const exportTypes: ExportTypeOption[] = [
+  { id: 'filled', name: 'Filled', nameRu: 'Заполненный', icon: <Check size={18} /> },
+  { id: 'empty', name: 'Empty', nameRu: 'Пустой', icon: <Copy size={18} /> },
+  { id: 'clues', name: 'Clues', nameRu: 'Вопросы', icon: <Type size={18} /> },
 ];
 
 const styleConfigs: Record<WordArtStyle, {
@@ -98,6 +112,7 @@ export function WordArtExport() {
   const [cw, setCw] = useState<Crossword | null>(null);
   const [board, setBoard] = useState<BoardState | null>(null);
   const [style, setStyle] = useState<WordArtStyle>('classic');
+  const [exportType, setExportType] = useState<ExportType>('filled');
   const [showPreview, setShowPreview] = useState(false);
   const [copied, setCopied] = useState(false);
   const [loading, setLoading] = useState(true);
@@ -138,10 +153,18 @@ export function WordArtExport() {
     const gridWidth = board.width * cellSize;
     const gridHeight = board.height * cellSize;
     const titleHeight = 80;
-    const footerHeight = 60;
+
+    let footerHeight = 60;
+    let cluesHeight = 0;
+    
+    if (exportType === 'clues') {
+      const maxClues = Math.max(board.clues.across.length, board.clues.down.length);
+      cluesHeight = maxClues * 24 + 60;
+      footerHeight = 40;
+    }
 
     canvas.width = gridWidth + padding * 2;
-    canvas.height = gridWidth + padding * 2 + titleHeight + footerHeight;
+    canvas.height = gridWidth + padding * 2 + titleHeight + footerHeight + cluesHeight;
 
     const bgGradient = ctx.createLinearGradient(0, 0, canvas.width, canvas.height);
     if (config.background.includes('gradient')) {
@@ -195,7 +218,7 @@ export function WordArtExport() {
           ctx.strokeRect(cellX, cellY, cellSize, cellSize);
           ctx.shadowBlur = 0;
 
-          if (cell.number) {
+          if (cell.number && exportType !== 'clues') {
             ctx.font = `bold ${cellSize * 0.25}px ${config.fontFamily}`;
             ctx.fillStyle = config.numberColor;
             ctx.textAlign = 'left';
@@ -203,7 +226,7 @@ export function WordArtExport() {
             ctx.fillText(cell.number.toString(), cellX + 4, cellY + 4);
           }
 
-          if (cell.value) {
+          if (exportType === 'filled' && cell.value) {
             ctx.font = `bold ${cellSize * 0.6}px ${config.fontFamily}`;
             ctx.fillStyle = config.letterColor;
             ctx.textAlign = 'center';
@@ -215,7 +238,50 @@ export function WordArtExport() {
             }
             ctx.fillText(cell.value, cellX + cellSize / 2, cellY + cellSize / 2 + cellSize * 0.1);
             ctx.shadowBlur = 0;
+          } else if (exportType === 'empty' || exportType === 'clues') {
+            ctx.font = `bold ${cellSize * 0.5}px ${config.fontFamily}`;
+            ctx.fillStyle = config.numberColor;
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+            ctx.globalAlpha = 0.3;
+            ctx.fillText('_', cellX + cellSize / 2, cellY + cellSize / 2);
+            ctx.globalAlpha = 1;
           }
+        }
+      }
+    }
+
+    if (exportType === 'clues') {
+      const cluesStartY = startY + gridHeight + 30;
+      const colWidth = canvas.width - padding * 2;
+      
+      ctx.font = `bold 16px ${config.fontFamily}`;
+      ctx.fillStyle = config.titleColor;
+      ctx.textAlign = 'left';
+      ctx.fillText('ACROSS', padding, cluesStartY);
+      ctx.textAlign = 'right';
+      ctx.fillText('DOWN', padding + colWidth / 2, cluesStartY);
+      
+      ctx.font = `13px ${config.fontFamily}`;
+      ctx.textAlign = 'left';
+      
+      const acrossClues = board.clues.across.filter(c => c.text);
+      const downClues = board.clues.down.filter(c => c.text);
+      const maxRows = Math.max(acrossClues.length, downClues.length);
+      
+      for (let i = 0; i < maxRows; i++) {
+        const y = cluesStartY + 25 + i * 20;
+        
+        if (acrossClues[i]) {
+          ctx.fillStyle = config.letterColor;
+          ctx.fillText(`${acrossClues[i].number}. ${acrossClues[i].text}`, padding, y);
+        }
+        
+        if (downClues[i]) {
+          ctx.textAlign = 'right';
+          ctx.fillStyle = config.letterColor;
+          ctx.fillText(`${downClues[i].number}. ${downClues[i].text}`, padding + colWidth / 2, y);
+          ctx.textAlign = 'left';
         }
       }
     }
@@ -225,7 +291,7 @@ export function WordArtExport() {
     ctx.textAlign = 'center';
     ctx.fillText('Crossword Studio', canvas.width / 2, canvas.height - 20);
 
-  }, [board, cw, style, getCell]);
+  }, [board, cw, style, exportType, getCell]);
 
   React.useEffect(() => {
     if (board && cw) {
@@ -291,6 +357,29 @@ export function WordArtExport() {
           </h2>
 
           <div className="mb-6">
+            <p className="text-body text-cafe-espresso/70 mb-4">{t('exportType') || 'Export type:'}</p>
+            <div className="grid grid-cols-3 gap-3 mb-4">
+              {exportTypes.map((et) => (
+                <motion.button
+                  key={et.id}
+                  whileHover={{ scale: 1.02 }}
+                  whileTap={{ scale: 0.98 }}
+                  onClick={() => {
+                    setExportType(et.id);
+                    playSound('cell-select');
+                  }}
+                  className={`p-3 rounded-sm border-2 transition-all ${
+                    exportType === et.id
+                      ? 'border-cafe-gold bg-cafe-gold/10'
+                      : 'border-cafe-leather/20 hover:border-cafe-leather/40'
+                  }`}
+                >
+                  <div className="flex justify-center mb-1 text-cafe-leather">{et.icon}</div>
+                  <div className="text-subhead font-semibold text-sm text-cafe-leather">{et.nameRu}</div>
+                </motion.button>
+              ))}
+            </div>
+            
             <p className="text-body text-cafe-espresso/70 mb-4">Choose a style:</p>
             <div className="grid grid-cols-5 gap-3">
               {styles.map((s) => (

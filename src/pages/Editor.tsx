@@ -144,25 +144,49 @@ export function Editor() {
     setBoard({ ...board, grid: newGrid });
   };
 
-  const activeClue = React.useMemo(() => {
+  const getWordBounds = React.useCallback((x: number, y: number, dir: 'across' | 'down') => {
+    if (!board) return null;
+    const cell = getCell(x, y);
+    if (!cell || cell.isBlock || cell.isHidden) return null;
+    
+    let startX = x, startY = y;
+    let endX = x, endY = y;
+    
+    if (dir === 'across') {
+      while (startX > 0 && !getCell(startX - 1, y)?.isBlock && !getCell(startX - 1, y)?.isHidden) startX--;
+      while (endX < board.width - 1 && !getCell(endX + 1, y)?.isBlock && !getCell(endX + 1, y)?.isHidden) endX++;
+    } else {
+      while (startY > 0 && !getCell(x, startY - 1)?.isBlock && !getCell(x, startY - 1)?.isHidden) startY--;
+      while (endY < board.height - 1 && !getCell(x, endY + 1)?.isBlock && !getCell(x, endY + 1)?.isHidden) endY++;
+    }
+    
+    return { startX, startY, endX, endY, length: dir === 'across' ? endX - startX + 1 : endY - startY + 1 };
+  }, [board, getCell]);
+
+  const wordBounds = React.useMemo(() => {
     if (!selectedCell || !board) return null;
     const cell = getCell(selectedCell.x, selectedCell.y);
-    if (!cell || cell.isBlock) return null;
-    
-    let num = null;
-    if (direction === 'across') {
-      let cx = selectedCell.x;
-      while (cx > 0 && !getCell(cx - 1, selectedCell.y)?.isBlock) cx--;
-      num = getCell(cx, selectedCell.y)?.number;
-      if (num) return board.clues.across.find(c => c.number === num);
-    } else {
-      let cy = selectedCell.y;
-      while (cy > 0 && !getCell(selectedCell.x, cy - 1)?.isBlock) cy--;
-      num = getCell(selectedCell.x, cy)?.number;
-      if (num) return board.clues.down.find(c => c.number === num);
-    }
-    return null;
-  }, [selectedCell, direction, board]);
+    if (!cell || cell.isBlock || cell.isHidden) return null;
+    return getWordBounds(selectedCell.x, selectedCell.y, direction);
+  }, [selectedCell, direction, board, getWordBounds]);
+
+  const getAllWordBounds = React.useCallback((x: number, y: number) => {
+    if (!board) return { across: null, down: null };
+    return {
+      across: getWordBounds(x, y, 'across'),
+      down: getWordBounds(x, y, 'down')
+    };
+  }, [board, getWordBounds]);
+
+  const allWordBounds = React.useMemo(() => {
+    if (!selectedCell || !board) return { across: null, down: null };
+    const cell = getCell(selectedCell.x, selectedCell.y);
+    if (!cell || cell.isBlock || cell.isHidden) return { across: null, down: null };
+    return {
+      across: getWordBounds(selectedCell.x, selectedCell.y, 'across'),
+      down: getWordBounds(selectedCell.x, selectedCell.y, 'down')
+    };
+  }, [selectedCell, board, getWordBounds]);
 
   if (!board) return <div className="p-8 text-center animate-pulse font-body text-cafe-espresso/60">{t('loadingEditor')}</div>;
 
@@ -442,16 +466,17 @@ className="relative bg-transparent rounded-sm"
             {board.grid.map((cell, i) => {
               const isEmpty = cell.isHidden;
               let isInWord = false;
-              if (selectedCell && !cell.isBlock && activeClue) {
-                 if (direction === 'across') {
-                   if (cell.y === selectedCell.y && cell.x >= activeClue.x && cell.x < activeClue.x + activeClue.length) {
-                     isInWord = true;
-                   }
-                 } else {
-                   if (cell.x === selectedCell.x && cell.y >= activeClue.y && cell.y < activeClue.y + activeClue.length) {
-                     isInWord = true;
-                   }
-                 }
+              if (selectedCell && !cell.isBlock && !cell.isHidden && allWordBounds) {
+                const across = allWordBounds.across;
+                const down = allWordBounds.down;
+                if (across) {
+                  isInWord = cell.x >= across.startX && cell.x <= across.endX && 
+                           cell.y >= across.startY && cell.y <= across.endY;
+                }
+                if (down) {
+                  isInWord = isInWord || (cell.x >= down.startX && cell.x <= down.endX && 
+                                         cell.y >= down.startY && cell.y <= down.endY);
+                }
               }
 
               const isSelected = selectedCell?.x === cell.x && selectedCell?.y === cell.y;
@@ -461,26 +486,32 @@ return (
                   key={`${cell.x}-${cell.y}`}
                   onClick={() => handleCellClick(cell.x, cell.y)}
                   className={clsx(
-                    "relative flex items-center justify-center cursor-pointer select-none overflow-hidden transition-colors duration-75",
+                    "relative flex items-center justify-center cursor-pointer select-none overflow-hidden transition-all duration-150",
                     cell.isBlock && !cell.isHidden && "bg-cafe-leather",
                     isEmpty && "bg-transparent",
-                    !cell.isBlock && !cell.isHidden && isSelected && "bg-cafe-gold z-10 scale-[1.02] shadow-sm ring-2 ring-cafe-honey",
-                    !cell.isBlock && !cell.isHidden && !isSelected && isInWord && "bg-cafe-latte/40 z-10 ring-1 ring-cafe-leather",
+                    !cell.isBlock && !cell.isHidden && isSelected && "bg-cafe-gold/30 z-10 scale-[1.03] shadow-lg ring-2 ring-cafe-honey",
+                    !cell.isBlock && !cell.isHidden && !isSelected && isInWord && "bg-cafe-gold/15 z-10 ring-1 ring-cafe-honey/60",
                     !cell.isBlock && !cell.isHidden && !isSelected && !isInWord && "bg-cafe-paper ring-1 ring-cafe-leather hover:bg-cafe-parchment",
                   )}
                 >
                    {cell.number && !cell.isBlock && !cell.isHidden && (
-                     <span className="absolute top-[3px] left-[4px] text-[11px] sm:text-[13px] font-display font-bold leading-none text-cafe-espresso/60 pointer-events-none select-none z-10">
+                     <span className={clsx(
+                       "absolute top-[2px] left-[3px] text-[10px] sm:text-[11px] font-display font-bold leading-none pointer-events-none select-none z-10 transition-colors",
+                       isSelected || isInWord ? "text-cafe-honey" : "text-cafe-espresso/60"
+                     )}>
                        {cell.number}
                      </span>
                    )}
                    {!cell.isBlock && !cell.isHidden && (
-                     <input 
-                       type="text"
-                       maxLength={1}
-                       value={cell.value}
-                       className="absolute inset-0 w-full h-full text-center bg-transparent text-lg font-mono uppercase text-cafe-leather cursor-pointer outline-none caret-transparent pb-0.5"
-                       onClick={() => handleCellClick(cell.x, cell.y)}
+<input 
+                        type="text"
+                        maxLength={1}
+                        value={cell.value}
+                        className={clsx(
+                          "absolute inset-0 w-full h-full text-center bg-transparent font-mono uppercase cursor-pointer outline-none caret-transparent pb-0.5 text-lg transition-colors",
+                          isSelected || isInWord ? "text-cafe-honey font-bold" : "text-cafe-leather"
+                        )}
+                        onClick={() => handleCellClick(cell.x, cell.y)}
                        onChange={(e) => {
                           const val = e.target.value.slice(-1);
                           if (/^[a-zA-Zа-яА-ЯёЁ]$/.test(val)) {
@@ -576,7 +607,7 @@ return (
                 </div>
               </div>
               <div className="mt-2 text-xl font-display font-bold text-cafe-leather leading-tight min-h-[1.75rem]">
-                {activeClue ? `${activeClue.number}. ${activeClue.text || '...'}` : '-'}
+                {wordBounds ? `${wordBounds.length} ${direction === 'across' ? 'A' : 'D'}` : '-'}
               </div>
             </div>
             
@@ -594,7 +625,10 @@ return (
                     </div>
                     <div className="p-3 space-y-2 overflow-y-auto max-h-[calc(100vh-22rem)]">
                        {board.clues[dir as 'across' | 'down'].map(clue => {
-                         const isActive = activeClue?.number === clue.number && direction === dir;
+                         const clueBounds = getWordBounds(clue.x, clue.y, dir);
+                         const isActive = clueBounds && selectedCell && 
+                           selectedCell.x >= clueBounds.startX && selectedCell.x <= clueBounds.endX &&
+                           selectedCell.y >= clueBounds.startY && selectedCell.y <= clueBounds.endY;
                          return (
                            <div key={clue.number} className="flex flex-col">
                              <div 

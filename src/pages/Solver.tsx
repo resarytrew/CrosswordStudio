@@ -407,26 +407,33 @@ className="relative bg-transparent rounded-[2px] shadow-[0_8px_40px_rgba(44,24,1
                   <div key={`${cell.x}-${cell.y}`}
                     onClick={() => !cell.isBlock && !cell.isHidden && handleCellClick(cell.x, cell.y)}
                     className={clsx(
-                      "relative flex items-center justify-center select-none transition-all duration-75",
+                      "relative flex items-center justify-center select-none overflow-hidden transition-all duration-150 cursor-pointer",
                       cell.isBlock && !cell.isHidden && "bg-cafe-leather",
                       isEmpty && "bg-transparent",
-                      !cell.isBlock && !cell.isHidden && isSelected && "bg-cafe-gold z-10 cursor-text ring-2 ring-cafe-honey",
-                      !cell.isBlock && !cell.isHidden && !isSelected && isInWord && "bg-cafe-latte/40 z-[5] ring-1 ring-cafe-leather cursor-pointer",
-                      !cell.isBlock && !cell.isHidden && !isSelected && !isInWord && "bg-cafe-paper ring-1 ring-cafe-leather cursor-pointer hover:bg-cafe-parchment/60",
+                      !cell.isBlock && !cell.isHidden && isSelected && "bg-cafe-gold/30 z-10 scale-[1.03] shadow-lg ring-2 ring-cafe-honey",
+                      !cell.isBlock && !cell.isHidden && !isSelected && isInWord && "bg-cafe-gold/15 z-[5] ring-1 ring-cafe-honey/60",
+                      !cell.isBlock && !cell.isHidden && !isSelected && !isInWord && "bg-cafe-paper ring-1 ring-cafe-leather",
                       isRecent && "animate-ink-fill",
                     )}
                   >
                     {cell.number && !cell.isBlock && !cell.isHidden && (
-                      <span className="absolute top-[1px] left-[2px] text-[9px] sm:text-[11px] font-display font-bold leading-none text-cafe-espresso/40 pointer-events-none select-none z-10">
+                      <span className={clsx(
+                        "absolute top-[1px] left-[2px] text-[9px] sm:text-[10px] font-display font-bold leading-none pointer-events-none select-none z-10 transition-colors",
+                        isSelected || isInWord ? "text-cafe-honey" : "text-cafe-espresso/40"
+                      )}>
                         {cell.number}
                       </span>
                     )}
                     {!cell.isBlock && !cell.isHidden && (
                       <input type="text" maxLength={1} value={ans} readOnly={isCompleted}
                         className={clsx(
-                          "absolute inset-0 w-full h-full text-center bg-transparent uppercase cursor-pointer outline-none caret-transparent font-mono font-bold",
+                          "absolute inset-0 w-full h-full text-center bg-transparent uppercase cursor-pointer outline-none caret-transparent font-mono",
                           "text-[clamp(12px,3.5vw,28px)]",
-                          isCompleted && ans === cell.value ? "text-cafe-gold" : "text-cafe-leather",
+                          isCompleted && ans === cell.value 
+                            ? "text-cafe-gold font-bold" 
+                            : isSelected || isInWord 
+                              ? "text-cafe-honey font-bold" 
+                              : "text-cafe-leather",
                         )}
                         onClick={() => !cell.isBlock && !cell.isHidden && handleCellClick(cell.x, cell.y)}
                         onChange={e => {
