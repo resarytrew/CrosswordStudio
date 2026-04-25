@@ -13,6 +13,7 @@ import {
 } from "lucide-react";
 import { motion, AnimatePresence } from "motion/react";
 import { Steam, FloatingParticles, CoffeeBean } from "../components/CafeAnimations";
+import { CanvasGrid } from "../components/CanvasGrid";
 
 /* ═══════════════════════════════════════════════════════════════
    SOLVER  — Читальный зал Кафе Эрудитов

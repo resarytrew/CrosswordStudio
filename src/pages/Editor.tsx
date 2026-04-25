@@ -9,6 +9,7 @@ import { BoardState, Clue, Crossword, GridCell } from '../types';
 import { updateGridNumbers } from '../lib/gridUtils';
 import { Save, Share2, ArrowLeft, ArrowRight, ArrowDown, Trash2, LayoutGrid, Hash, CheckSquare, AlertTriangle, Bookmark, Sparkles, Image } from 'lucide-react';
 import { LampGlow, InkDrop } from '../components/CafeAnimations';
+import { CanvasGrid } from '../components/CanvasGrid';
 import clsx from 'clsx';
 import { motion } from 'motion/react';
 
@@ -447,121 +448,18 @@ Word Art
         </div>
       </div>
 
-      <div className="flex-1 overflow-hidden flex flex-col md:flex-row p-0 sm:p-6 gap-6 sm:gap-8 max-w-[1600px] mx-auto w-full">
-        <div className="flex-1 flex items-center justify-center bg-transparent overflow-auto p-4 max-h-[85vh]">
-          <motion.div 
-            ref={gridRef}
-            initial={{ opacity: 0, scale: 0.95, rotateX: 5 }}
-            animate={{ opacity: 1, scale: 1, rotateX: 0 }}
-            transition={{ duration: 0.4, ease: "easeOut" }}
-className="relative bg-transparent rounded-sm"
-            style={{
-              display: 'grid',
-              gridTemplateColumns: `repeat(${board.width}, 1fr)`,
-              gridTemplateRows: `repeat(${board.height}, 1fr)`,
-              width: 'min(100%, 600px)',
-              aspectRatio: '1/1',
-            }}
-          >
-            {board.grid.map((cell, i) => {
-              const isEmpty = cell.isHidden;
-              let isInWord = false;
-              if (selectedCell && !cell.isBlock && !cell.isHidden && allWordBounds) {
-                const across = allWordBounds.across;
-                const down = allWordBounds.down;
-                if (across) {
-                  isInWord = cell.x >= across.startX && cell.x <= across.endX && 
-                           cell.y >= across.startY && cell.y <= across.endY;
-                }
-                if (down) {
-                  isInWord = isInWord || (cell.x >= down.startX && cell.x <= down.endX && 
-                                         cell.y >= down.startY && cell.y <= down.endY);
-                }
-              }
-
-              const isSelected = selectedCell?.x === cell.x && selectedCell?.y === cell.y;
-              
-return (
-                <div 
-                  key={`${cell.x}-${cell.y}`}
-                  onClick={() => handleCellClick(cell.x, cell.y)}
-                  className={clsx(
-                    "relative flex items-center justify-center cursor-pointer select-none overflow-hidden transition-all duration-150",
-                    cell.isBlock && !cell.isHidden && "bg-cafe-leather",
-                    isEmpty && "bg-transparent",
-                    !cell.isBlock && !cell.isHidden && isSelected && "bg-cafe-gold/30 z-10 scale-[1.03] shadow-lg ring-2 ring-cafe-honey",
-                    !cell.isBlock && !cell.isHidden && !isSelected && isInWord && "bg-cafe-gold/15 z-10 ring-1 ring-cafe-honey/60",
-                    !cell.isBlock && !cell.isHidden && !isSelected && !isInWord && "bg-cafe-paper ring-1 ring-cafe-leather hover:bg-cafe-parchment",
-                  )}
-                >
-                   {cell.number && !cell.isBlock && !cell.isHidden && (
-                     <span className={clsx(
-                       "absolute top-[2px] left-[3px] text-[10px] sm:text-[11px] font-display font-bold leading-none pointer-events-none select-none z-10 transition-colors",
-                       isSelected || isInWord ? "text-cafe-honey" : "text-cafe-espresso/60"
-                     )}>
-                       {cell.number}
-                     </span>
-                   )}
-                   {!cell.isBlock && !cell.isHidden && (
-<input 
-                        type="text"
-                        maxLength={1}
-                        value={cell.value}
-                        className={clsx(
-                          "absolute inset-0 w-full h-full text-center bg-transparent font-mono uppercase cursor-pointer outline-none caret-transparent pb-0.5 text-lg transition-colors",
-                          isSelected || isInWord ? "text-cafe-honey font-bold" : "text-cafe-leather"
-                        )}
-                        onClick={() => handleCellClick(cell.x, cell.y)}
-                       onChange={(e) => {
-                          const val = e.target.value.slice(-1);
-                          if (/^[a-zA-Zа-яА-ЯёЁ]$/.test(val)) {
-                             setLetter(cell.x, cell.y, val.toUpperCase());
-                             if (direction === 'across') {
-                               let nx = cell.x + 1;
-                               while (nx < board.width && getCell(nx, cell.y)?.isBlock) nx++;
-                               if (nx < board.width) setSelectedCell({ x: nx, y: cell.y });
-                             } else {
-                               let ny = cell.y + 1;
-                               while (ny < board.height && getCell(cell.x, ny)?.isBlock) ny++;
-                               if (ny < board.height) setSelectedCell({ x: cell.x, y: ny });
-                             }
-                          } else if (val === '') {
-                              setLetter(cell.x, cell.y, '');
-                          }
-                       }}
-                       onKeyDown={(e) => {
-                          if (e.key === 'Backspace' && cell.value === '') {
-                              if (direction === 'across') {
-                                 let nx = cell.x - 1;
-                                 while (nx >= 0 && getCell(nx, cell.y)?.isBlock) nx--;
-                                 if (nx >= 0) setSelectedCell({ x: nx, y: cell.y });
-                              } else {
-                                 let ny = cell.y - 1;
-                                 while (ny >= 0 && getCell(cell.x, ny)?.isBlock) ny--;
-                                 if (ny >= 0) setSelectedCell({ x: cell.x, y: ny });
-                              }
-                          } else if (e.key === '.') {
-                             e.preventDefault();
-                             setBlock(cell.x, cell.y, !cell.isBlock);
-                          } else if (e.key === ' ') {
-                             e.preventDefault();
-                             setHidden(cell.x, cell.y, !cell.isHidden);
-                          } else if (e.key.startsWith('Arrow')) {
-                             e.preventDefault();
-                             let { x, y } = cell;
-                             if (e.key === 'ArrowUp') y = Math.max(0, y - 1);
-                             if (e.key === 'ArrowDown') y = Math.min(board.height - 1, y + 1);
-                             if (e.key === 'ArrowLeft') x = Math.max(0, x - 1);
-                             if (e.key === 'ArrowRight') x = Math.min(board.width - 1, x + 1);
-                             setSelectedCell({ x, y });
-                          }
-                       }}
-                     />
-                   )}
-                 </div>
-               );
-             })}
-          </motion.div>
+<div className="flex-1 overflow-hidden flex flex-col md:flex-row p-0 sm:p-6 gap-6 sm:gap-8 max-w-[1600px] mx-auto w-full">
+        <div className="flex-1 flex items-center justify-center overflow-auto p-4 max-h-[85vh]">
+          <div className="w-full max-w-[600px]" style={{ aspectRatio: '1/1' }}>
+            <CanvasGrid
+              board={board}
+              selectedCell={selectedCell}
+              direction={direction}
+              allWordBounds={allWordBounds}
+              onCellClick={handleCellClick}
+              editable={true}
+            />
+          </div>
         </div>
 
         <div className="w-full md:w-[32rem] lg:w-[38rem] flex flex-col h-1/2 md:h-full gap-4 md:gap-6 shrink-0 relative z-10">
