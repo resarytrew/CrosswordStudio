@@ -486,8 +486,8 @@ export function Editor() {
 </div>
       </div>
 
-      <div className="flex-1 overflow-hidden flex flex-col xl:flex-row p-0 sm:p-4 md:p-6 gap-4 xl:gap-6 max-w-[1700px] mx-auto w-full relative z-10 xl:items-stretch h-full">
-        <div className="flex-1 flex flex-col items-center justify-center overflow-y-auto overflow-x-hidden p-3 pb-4">
+<div className="flex-1 overflow-hidden flex flex-col xl:flex-row p-0 sm:p-4 md:p-6 gap-4 xl:gap-6 max-w-[1700px] mx-auto w-full relative z-10 xl:items-stretch h-screen">
+        <div className="flex-1 flex items-center justify-center overflow-hidden p-3 xl:overflow-visible">
           <motion.div
             whileTap={{ scale: 0.998 }}
             transition={{ duration: 0.12 }}
@@ -507,8 +507,8 @@ export function Editor() {
 
 <div
           className={clsx(
-            'w-full xl:w-[760px] shrink-0 xl:h-full fixed bottom-0 left-0 right-0 xl:static bg-[linear-gradient(165deg,rgba(29,26,22,0.96)_0%,rgba(43,38,31,0.95)_100%)] z-20 xl:z-10 shadow-[0_-14px_40px_rgba(12,10,8,0.35)] xl:shadow-[0_16px_34px_rgba(12,10,8,0.4)] border-t border-[#6f8069]/30 xl:border xl:border-[#6f8069]/28 xl:rounded-sm flex flex-col overflow-hidden transition-[height] duration-300 pb-[env(safe-area-inset-bottom)]',
-            'h-[78vh] xl:h-full'
+            'w-full xl:w-[760px] shrink-0 fixed bottom-0 left-0 right-0 xl:static bg-[linear-gradient(165deg,rgba(29,26,22,0.96)_0%,rgba(43,38,31,0.95)_100%)] z-20 xl:z-10 shadow-[0_-14px_40px_rgba(12,10,8,0.35)] xl:shadow-[0_16px_34px_rgba(12,10,8,0.4)] border-t border-[#6f8069]/30 xl:border xl:border-[#6f8069]/28 xl:rounded-sm flex flex-col overflow-hidden transition-[height] duration-300 pb-[env(safe-area-inset-bottom)]',
+            'h-[78vh] xl:h-auto xl:max-h-[calc(100vh-8rem)] xl:overflow-y-auto'
           )}
         >
           {stats && (
