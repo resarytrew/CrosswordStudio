@@ -666,11 +666,12 @@ export function Solver() {
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ duration: 0.25, ease: "easeOut" }}
                   className={clsx(
-                    "flex flex-col h-full overflow-hidden",
+                    "relative flex flex-col h-full overflow-hidden",
                     direction !== dir ? "hidden xl:flex" : "flex",
                     "xl:rounded-sm xl:border xl:border-[#c4b79f]/45 xl:bg-[linear-gradient(165deg,#fcf8ef_0%,#f7f2e8_100%)] xl:backdrop-blur-md"
                   )}
                 >
+                  <div className="pointer-events-none absolute inset-x-0 top-0 h-16 bg-[radial-gradient(circle_at_18%_0%,rgba(169,198,154,0.26),transparent_68%)]" />
                   <button
                     type="button"
                     onClick={() => {
@@ -711,8 +712,8 @@ export function Solver() {
                           initial={{ opacity: 0, x: -8 }}
                           animate={{ opacity: 1, x: 0 }}
                           transition={{ duration: 0.2, delay: Math.min(index * 0.012, 0.18) }}
-                          whileHover={{ x: 1.5 }}
-                          whileTap={{ scale: 0.985 }}
+                          whileHover={{ x: 2, y: -1, scale: 1.002 }}
+                          whileTap={{ scale: 0.982 }}
                           onClick={() => {
                             if (!hasStarted) return;
                             setSelectedCell({ x: clue.x, y: clue.y });
@@ -723,11 +724,16 @@ export function Solver() {
                           className={clsx(
                             "relative w-full text-left grid grid-cols-[1fr_48px] gap-2.5 items-start px-3 py-3 rounded-sm transition-all border border-transparent",
                             isActive
-                              ? "bg-[linear-gradient(96deg,rgba(220,234,206,0.86)_0%,rgba(247,242,232,0.95)_56%,rgba(252,248,239,1)_100%)] border-[#9fb88f]/50 shadow-[0_8px_20px_rgba(62,88,58,0.2)]"
-                              : "bg-[linear-gradient(96deg,#fcf8ef,#f8f3e7)] hover:bg-[linear-gradient(96deg,#f7f1e2,#f2e8d3)] hover:border-[#cdbd9e]/55"
+                              ? "bg-[linear-gradient(96deg,rgba(220,234,206,0.86)_0%,rgba(247,242,232,0.95)_56%,rgba(252,248,239,1)_100%)] border-[#9fb88f]/50 shadow-[0_10px_22px_rgba(62,88,58,0.24)]"
+                              : "bg-[linear-gradient(96deg,#fcf8ef,#f8f3e7)] hover:bg-[linear-gradient(96deg,#f7f1e2,#f2e8d3)] hover:border-[#cdbd9e]/55 hover:shadow-[0_8px_18px_rgba(44,55,39,0.12)]"
                           )}
                         >
-                          <span className={clsx("font-body text-[17px] leading-relaxed text-right", isActive ? "text-[#1f2a36]" : "text-[#253241]")}>{clue.text || <span className="text-[#6f7f90]/50 italic">{t("noClue")}</span>}</span>
+                          <span
+                            className={clsx("font-body text-[18px] leading-relaxed", isActive ? "text-[#1f2a36]" : "text-[#253241]")}
+                            style={{ textAlign: "justify", textJustify: "inter-word" }}
+                          >
+                            {clue.text || <span className="text-[#6f7f90]/50 italic">{t("noClue")}</span>}
+                          </span>
                           <span className={clsx("font-display text-xl leading-none pt-0.5 text-right", isActive ? "text-[#1f2a36]" : "text-[#2f3d4f]/75")}>{clue.number}</span>
                           {isActive && (
                             <>
