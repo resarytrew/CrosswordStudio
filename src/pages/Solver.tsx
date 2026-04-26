@@ -271,8 +271,12 @@ export function Solver() {
 
   useEffect(() => {
     if (!activeClueInfo) return;
-    const key = `${direction}-${activeClueInfo.number}`;
-    const el = clueRefs.current[key];
+    const keys = [
+      `desktop-${direction}-${activeClueInfo.number}`,
+      `mobile-${direction}-${activeClueInfo.number}`,
+      `${direction}-${activeClueInfo.number}`,
+    ];
+    const el = keys.map((k) => clueRefs.current[k]).find(Boolean);
     if (el) el.scrollIntoView({ behavior: "smooth", block: "nearest" });
   }, [activeClueInfo, direction]);
 
@@ -612,8 +616,8 @@ export function Solver() {
 
         <div
           className={clsx(
-            "w-full xl:w-[480px] shrink-0 xl:h-[calc(100vh-7rem)] fixed bottom-0 left-0 right-0 xl:static bg-cafe-paper z-20 xl:z-10 shadow-[0_-10px_30px_rgba(44,24,16,0.08)] xl:shadow-lg border-t border-cafe-leather/10 xl:border xl:border-cafe-leather/8 xl:rounded-sm flex flex-col overflow-hidden transition-[height] duration-300",
-            sheetExpanded ? "h-[72vh]" : "h-[42vh]",
+            "w-full xl:w-[560px] shrink-0 xl:h-[calc(100vh-7rem)] fixed bottom-0 left-0 right-0 xl:static bg-[linear-gradient(165deg,rgba(254,249,242,0.98)_0%,rgba(244,233,215,0.95)_100%)] z-20 xl:z-10 shadow-[0_-14px_40px_rgba(44,24,16,0.12)] xl:shadow-[0_16px_34px_rgba(31,22,15,0.14)] border-t border-cafe-leather/12 xl:border xl:border-cafe-leather/10 xl:rounded-sm flex flex-col overflow-hidden transition-[height] duration-300",
+            sheetExpanded ? "h-[78vh]" : "h-[46vh]",
             "xl:h-[calc(100vh-7rem)]"
           )}
         >
@@ -624,51 +628,144 @@ export function Solver() {
             <GripHorizontal size={18} />
           </button>
 
-          {(["across", "down"] as const).map((dir) => (
-            <div key={dir} className="flex flex-col flex-1 overflow-hidden border-b border-cafe-leather/5 last:border-b-0">
-              <div className="px-4 py-2.5 bg-cafe-leather/[0.03] border-b border-cafe-leather/10 sticky top-0 z-10 shrink-0 flex items-center justify-between">
-                <h2 className="font-subhead text-sm font-bold uppercase tracking-[0.15em] text-cafe-leather/70 flex items-center gap-2">
-                  {dir === "across" ? <ArrowRight size={13} /> : <ArrowDown size={13} />}
+          <div className="xl:hidden px-3 pt-3 pb-2 border-b border-cafe-leather/10 bg-cafe-paper/55 backdrop-blur-md">
+            <div className="relative grid grid-cols-2 rounded-sm border border-cafe-leather/10 bg-cafe-parchment/40 p-1">
+              <motion.div
+                initial={false}
+                animate={{ x: direction === "across" ? "0%" : "100%" }}
+                transition={{ type: "spring", stiffness: 240, damping: 28 }}
+                className="absolute top-1 bottom-1 left-1 w-[calc(50%-4px)] rounded-sm bg-[linear-gradient(140deg,rgba(232,201,122,0.55)_0%,rgba(232,201,122,0.22)_100%)] border border-cafe-gold/40 shadow-[0_5px_16px_rgba(160,120,66,0.22)]"
+              />
+              {(["across", "down"] as const).map((dir) => (
+                <button
+                  key={dir}
+                  type="button"
+                  onClick={() => {
+                    setDirection(dir);
+                    triggerHaptic(10);
+                  }}
+                  className={clsx(
+                    "relative z-10 h-10 flex items-center justify-center gap-2 rounded-sm text-sm font-subhead font-bold tracking-[0.06em] transition-colors",
+                    direction === dir ? "text-cafe-leather" : "text-cafe-espresso/60"
+                  )}
+                >
+                  {dir === "across" ? <ArrowRight size={14} /> : <ArrowDown size={14} />}
                   {t(dir)}
-                </h2>
-                <span className="font-mono text-[10px] text-cafe-leather/40">{board.clues[dir].length}</span>
-              </div>
-
-              <div className="flex-1 overflow-y-auto scroll-smooth">
-                {board.clues[dir].map((clue) => {
-                  const isActive = activeClueInfo?.number === clue.number && direction === dir;
-                  const refKey = `${dir}-${clue.number}`;
-                  return (
-                    <motion.button
-                      key={clue.number}
-                      type="button"
-                      ref={(el) => {
-                        clueRefs.current[refKey] = el;
-                      }}
-                      whileTap={{ scale: 0.985 }}
-                      onClick={() => {
-                        if (!hasStarted) return;
-                        setSelectedCell({ x: clue.x, y: clue.y });
-                        setDirection(dir);
-                        playSound("cell-select");
-                        triggerHaptic(10);
-                      }}
-                      className={clsx(
-                        "w-full text-left flex gap-2.5 px-4 py-2.5 cursor-pointer transition-all duration-150 border-l-[3px] relative",
-                        isActive
-                          ? "bg-[linear-gradient(90deg,rgba(232,201,122,0.35)_0%,rgba(232,201,122,0.15)_60%,transparent_100%)] border-l-cafe-gold text-cafe-leather"
-                          : "border-l-transparent hover:bg-cafe-parchment/60 text-cafe-leather/85"
-                      )}
-                    >
-                      <span className={clsx("font-display font-bold text-sm min-w-[22px] text-right shrink-0", isActive ? "text-cafe-gold" : "text-cafe-leather/60")}>{clue.number}</span>
-                      <span className="font-body text-[13.5px] leading-relaxed text-cafe-espresso">{clue.text || <span className="text-cafe-espresso/35 italic">{t("noClue")}</span>}</span>
-                      {isActive && <span className="pointer-events-none absolute inset-y-0 right-2 w-10 bg-gradient-to-l from-cafe-gold/20 to-transparent" />}
-                    </motion.button>
-                  );
-                })}
-              </div>
+                </button>
+              ))}
             </div>
-          ))}
+          </div>
+
+          <div className="hidden xl:grid xl:grid-cols-2 gap-3 p-3 border-b border-cafe-leather/10 bg-cafe-paper/45 backdrop-blur-md">
+            {(["across", "down"] as const).map((dir) => {
+              const accent = dir === "across" ? "from-[#d8b06a]/45" : "from-[#6c8197]/35";
+              const active = direction === dir;
+              return (
+                <button
+                  key={dir}
+                  type="button"
+                  onClick={() => {
+                    setDirection(dir);
+                    triggerHaptic(10);
+                  }}
+                  className={clsx(
+                    "relative rounded-sm border px-4 py-2.5 text-left transition-all",
+                    active
+                      ? `border-cafe-gold/45 bg-[linear-gradient(140deg,rgba(248,236,212,0.95)_0%,rgba(255,255,255,0.8)_100%)] shadow-[0_8px_20px_rgba(115,84,44,0.2)]`
+                      : `border-cafe-leather/15 bg-[linear-gradient(140deg,rgba(255,255,255,0.8)_0%,rgba(245,235,220,0.62)_100%)] hover:border-cafe-gold/30`
+                  )}
+                >
+                  <span className={clsx("absolute inset-0 rounded-sm bg-gradient-to-r to-transparent opacity-35", accent)} />
+                  <span className="relative flex items-center justify-between">
+                    <span className="flex items-center gap-2 font-subhead text-sm font-bold tracking-[0.08em] text-cafe-leather uppercase">
+                      {dir === "across" ? <ArrowRight size={14} /> : <ArrowDown size={14} />}
+                      {t(dir)}
+                    </span>
+                    <span className="font-mono text-xs text-cafe-espresso/55">{board.clues[dir].length}</span>
+                  </span>
+                </button>
+              );
+            })}
+          </div>
+
+          <div className="flex-1 overflow-hidden xl:grid xl:grid-cols-2 xl:gap-3 xl:p-3">
+            {(["across", "down"] as const).map((dir) => {
+              const accentRail = dir === "across" ? "from-[#c79a4a]/70" : "from-[#617a93]/65";
+              return (
+                <motion.section
+                  key={dir}
+                  initial={{ opacity: 0, y: 16 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ duration: 0.25, ease: "easeOut" }}
+                  className={clsx(
+                    "flex flex-col h-full overflow-hidden",
+                    direction !== dir ? "hidden xl:flex" : "flex",
+                    "xl:rounded-sm xl:border xl:border-cafe-leather/10 xl:bg-cafe-paper/62 xl:backdrop-blur-md"
+                  )}
+                >
+                  <div className="px-4 py-3 border-b border-cafe-leather/10 bg-[linear-gradient(140deg,rgba(255,255,255,0.74)_0%,rgba(243,230,208,0.58)_100%)]">
+                    <div className="flex items-center justify-between gap-3">
+                      <h2 className="font-display text-xl leading-none text-cafe-leather tracking-tight flex items-center gap-2">
+                        {dir === "across" ? <ArrowRight size={17} className="text-cafe-honey" /> : <ArrowDown size={17} className="text-cafe-honey" />}
+                        {t(dir)}
+                      </h2>
+                      <span className="font-mono text-xs px-2 py-1 rounded-sm bg-cafe-leather/8 text-cafe-espresso/70">
+                        {board.clues[dir].length}
+                      </span>
+                    </div>
+                  </div>
+
+                  <div className="flex-1 overflow-y-auto scroll-smooth px-1 py-1">
+                    {board.clues[dir].map((clue, index) => {
+                      const isActive = activeClueInfo?.number === clue.number && direction === dir;
+                      const refKey = `desktop-${dir}-${clue.number}`;
+                      const mobileRefKey = `mobile-${dir}-${clue.number}`;
+                      return (
+                        <motion.button
+                          key={`${dir}-${clue.number}`}
+                          type="button"
+                          ref={(el) => {
+                            clueRefs.current[refKey] = el;
+                            clueRefs.current[mobileRefKey] = el;
+                          }}
+                          initial={{ opacity: 0, x: -8 }}
+                          animate={{ opacity: 1, x: 0 }}
+                          transition={{ duration: 0.2, delay: Math.min(index * 0.012, 0.18) }}
+                          whileHover={{ x: 1.5 }}
+                          whileTap={{ scale: 0.985 }}
+                          onClick={() => {
+                            if (!hasStarted) return;
+                            setSelectedCell({ x: clue.x, y: clue.y });
+                            setDirection(dir);
+                            playSound("cell-select");
+                            triggerHaptic(10);
+                          }}
+                          className={clsx(
+                            "relative w-full text-left grid grid-cols-[42px_1fr] gap-2.5 items-start px-3 py-3 rounded-sm transition-all border border-transparent",
+                            isActive
+                              ? "bg-[linear-gradient(96deg,rgba(232,201,122,0.3)_0%,rgba(255,247,232,0.82)_45%,rgba(255,255,255,0.9)_100%)] border-cafe-gold/30 shadow-[0_8px_20px_rgba(157,119,61,0.14)]"
+                              : "hover:bg-cafe-paper/75 hover:border-cafe-leather/10"
+                          )}
+                        >
+                          <span className={clsx("font-display text-lg leading-none pt-0.5 text-right", isActive ? "text-cafe-honey" : "text-cafe-leather/65")}>{clue.number}</span>
+                          <span className={clsx("font-body text-[15px] leading-relaxed", isActive ? "text-cafe-leather" : "text-cafe-espresso")}>{clue.text || <span className="text-cafe-espresso/40 italic">{t("noClue")}</span>}</span>
+                          {isActive && (
+                            <>
+                              <motion.span
+                                layoutId="active-clue-rail"
+                                className={clsx("absolute left-0 top-1.5 bottom-1.5 w-1 rounded-r-sm bg-gradient-to-b to-transparent", accentRail)}
+                              />
+                              <span className="pointer-events-none absolute inset-y-0 right-2 w-12 bg-gradient-to-l from-cafe-gold/22 to-transparent" />
+                            </>
+                          )}
+                        </motion.button>
+                      );
+                    })}
+                  </div>
+                </motion.section>
+              );
+            })}
+          </div>
         </div>
       </div>
 
