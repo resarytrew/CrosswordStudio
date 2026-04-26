@@ -134,15 +134,16 @@ const toCrosswordPayload = (data: Omit<Crossword, 'id'>): Omit<Crossword, 'id'> 
     try {
       await createCrossword(newId, newPw);
       navigate(`/editor/${newId}`);
-    } catch (err) {
-      handleFirestoreError(err, 'create', `/crosswords/${newId}`);
-      alert(language === 'ru' ? 'Не удалось создать кроссворд. Проверьте правила Firestore для коллекции crosswords.' : 'Failed to create crossword. Check Firestore rules for crosswords collection.');
+} catch (err: any) {
+      console.error('Create crossword error:', err);
+      const errorMsg = err?.message || err?.code || JSON.stringify(err);
+      alert(language === 'ru' ? `Ошибка: ${errorMsg}` : `Error: ${errorMsg}`);
     } finally {
       setCreating(false);
     }
   };
 
-const handleCreate = async () => {
+  const handleCreate = async () => {
     if (!user || creating) return;
     setCreating(true);
     playSound('book-open');
@@ -153,9 +154,10 @@ const handleCreate = async () => {
     try {
       await createCrossword(newId, newPw);
       navigate(`/editor/${newId}`);
-    } catch (err) {
-      handleFirestoreError(err, 'create', `/crosswords/${newId}`);
-      alert(language === 'ru' ? 'Не удалось создать кроссворд. Проверьте правила Firestore для коллекции crosswords.' : 'Failed to create crossword. Check Firestore rules for crosswords collection.');
+    } catch (err: any) {
+      console.error('Create crossword error:', err);
+      const errorMsg = err?.message || err?.code || JSON.stringify(err);
+      alert(language === 'ru' ? `Ошибка: ${errorMsg}` : `Error: ${errorMsg}`);
     } finally {
       setCreating(false);
     }
