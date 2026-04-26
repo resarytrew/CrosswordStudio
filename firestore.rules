@@ -46,8 +46,10 @@ function isValidCrosswordUpdate(data, old) {
       allow create: if isValidId(crosswordId) && isSignedIn() && isValidCrossword(incoming());
       
       allow update: if isValidId(crosswordId) && isSignedIn() && existing().authorId == request.auth.uid && (
-        incoming().diff(existing()).affectedKeys().hasAny(['title', 'boardState', 'answersHash', 'updatedAt', 'isPublished', 'isTemplate']) &&
-        isValidCrosswordUpdate(incoming(), existing())
+        (incoming().keys().hasOnly(['isTemplate', 'updatedAt']) && incoming().isTemplate is bool && incoming().updatedAt is number)
+        ||
+        (incoming().diff(existing()).affectedKeys().hasAny(['title', 'boardState', 'answersHash', 'updatedAt', 'isPublished', 'isTemplate']) &&
+        isValidCrosswordUpdate(incoming(), existing()))
       );
 
       allow delete: if isValidId(crosswordId) && isSignedIn() && existing().authorId == request.auth.uid;
