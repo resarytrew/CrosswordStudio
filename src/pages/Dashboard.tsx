@@ -130,11 +130,11 @@ const toCrosswordPayload = (data: Omit<Crossword, 'id'>): Omit<Crossword, 'id'> 
     let boardState: BoardState = { width: template.width, height: template.height, grid, clues: { across: [], down: [] } };
     boardState = updateGridNumbers(boardState);
     const answersHash = computeAnswersHash(boardState);
-    const newPw: Crossword = { authorId: user.uid, title: language === 'ru' ? template.nameRu : template.name, boardState, answersHash, createdAt: Date.now(), updatedAt: Date.now(), isPublished: false };
-    try {
+    const newPw: Crossword = { authorId: user.uid, title: language === 'ru' ? template.nameRu : template.name, boardState, answersHash, createdAt: Date.now(), updatedAt: Date.now(), isPublished: false, isTemplate: false };
+try {
       await createCrossword(newId, newPw);
       navigate(`/editor/${newId}`);
-} catch (err: any) {
+    } catch (err: any) {
       console.error('Create crossword error:', err);
       const errorMsg = err?.message || err?.code || JSON.stringify(err);
       alert(language === 'ru' ? `Ошибка: ${errorMsg}` : `Error: ${errorMsg}`);
@@ -150,14 +150,13 @@ const toCrosswordPayload = (data: Omit<Crossword, 'id'>): Omit<Crossword, 'id'> 
     const newId = crypto.randomUUID();
     const boardState = createEmptyGrid(15, 15);
     const answersHash = computeAnswersHash(boardState);
-    const newPw: Crossword = { authorId: user.uid, title: 'Untitled Crossword', boardState, answersHash, createdAt: Date.now(), updatedAt: Date.now(), isPublished: false };
+    const newPw: Crossword = { authorId: user.uid, title: 'Untitled Crossword', boardState, answersHash, createdAt: Date.now(), updatedAt: Date.now(), isPublished: false, isTemplate: false };
     try {
       await createCrossword(newId, newPw);
       navigate(`/editor/${newId}`);
-    } catch (err: any) {
-      console.error('Create crossword error:', err);
-      const errorMsg = err?.message || err?.code || JSON.stringify(err);
-      alert(language === 'ru' ? `Ошибка: ${errorMsg}` : `Error: ${errorMsg}`);
+} catch (err) {
+      handleFirestoreError(err, 'create', `/crosswords/${newId}`);
+      alert(language === 'ru' ? 'Не удалось создать кроссворд. Проверьте правила Firestore для коллекции crosswords.' : 'Failed to create crossword. Check Firestore rules for crosswords collection.');
     } finally {
       setCreating(false);
     }
