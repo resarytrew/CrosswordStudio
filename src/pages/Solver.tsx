@@ -392,7 +392,7 @@ export function Solver() {
   }
 
   return (
-    <div className="flex flex-col h-full bg-[radial-gradient(circle_at_12%_8%,rgba(232,201,122,0.14),transparent_42%),radial-gradient(circle_at_88%_84%,rgba(139,58,74,0.13),transparent_38%),linear-gradient(180deg,#faf7f0_0%,#f0e6d6_100%)] overflow-hidden relative" onKeyDown={handleKeyDown} tabIndex={0}>
+    <div className="flex flex-col h-full bg-[radial-gradient(circle_at_12%_8%,rgba(176,141,87,0.14),transparent_42%),radial-gradient(circle_at_88%_84%,rgba(63,42,36,0.16),transparent_38%),linear-gradient(180deg,#ece7de_0%,#d8d0c2_100%)] overflow-hidden relative" onKeyDown={handleKeyDown} tabIndex={0}>
       {effectsEnabled && <FloatingParticles count={6} className="opacity-15 z-0" />}
       {effectsEnabled && <LampGlow className="opacity-35" intensity="soft" />}
       <div className="absolute inset-0 z-0 overflow-hidden pointer-events-none">
@@ -488,12 +488,12 @@ export function Solver() {
         </div>
 
         <div className="flex items-center gap-3">
-          <div className="hidden sm:flex items-center gap-2 text-[11px] font-mono text-cafe-espresso/60 bg-gradient-to-r from-cafe-paper to-cafe-parchment/55 border border-cafe-leather/10 px-2.5 py-1 rounded-sm shadow-[inset_0_1px_0_rgba(255,255,255,0.55)]">
+          <div className="hidden sm:flex items-center gap-2 text-[11px] font-mono text-cafe-espresso/70 bg-[linear-gradient(120deg,rgba(255,255,255,0.78),rgba(228,221,210,0.66))] border border-cafe-leather/15 px-2.5 py-1 rounded-sm shadow-[inset_0_1px_0_rgba(255,255,255,0.5)]">
             <span>{t("solverProgress")}</span>
             <span className="font-bold text-cafe-leather">{progressPercent}%</span>
           </div>
 
-          <div className="flex items-center gap-1.5 font-mono text-sm font-bold text-cafe-leather bg-gradient-to-r from-cafe-parchment/70 to-cafe-paper px-2.5 py-1 rounded-sm border border-cafe-leather/10 shadow-[inset_0_1px_0_rgba(255,255,255,0.55)]">
+          <div className="flex items-center gap-1.5 font-mono text-sm font-bold text-cafe-leather bg-[linear-gradient(120deg,rgba(243,238,230,0.88),rgba(255,255,255,0.82))] px-2.5 py-1 rounded-sm border border-cafe-leather/15 shadow-[inset_0_1px_0_rgba(255,255,255,0.5)]">
             <ClockTick className="text-cafe-gold" />
             <span>{formatTime(timer)}</span>
           </div>
@@ -528,7 +528,7 @@ export function Solver() {
           initial={false}
           animate={{ width: `${progressPercent}%` }}
           transition={{ duration: 0.32, ease: "easeOut" }}
-          className="h-full bg-[linear-gradient(90deg,#d6aa5f_0%,#ebcf9a_48%,#bf8c3c_100%)] shadow-[0_0_14px_rgba(214,170,95,0.45)]"
+          className="h-full bg-[linear-gradient(90deg,#6f4f23_0%,#b08d57_52%,#7a5a2a_100%)] shadow-[0_0_14px_rgba(176,141,87,0.42)]"
         />
       </div>
 
@@ -561,7 +561,7 @@ export function Solver() {
           <motion.div
             whileTap={{ scale: 0.998 }}
             transition={{ duration: 0.12 }}
-            className="relative w-full max-w-[680px] rounded-sm border border-cafe-leather/15 p-2 bg-[linear-gradient(165deg,rgba(255,255,255,0.92)_0%,rgba(248,238,224,0.74)_100%)] shadow-[0_20px_50px_rgba(35,24,16,0.17)]"
+            className="relative w-full max-w-[680px] rounded-sm border border-cafe-leather/18 p-2 bg-[linear-gradient(165deg,rgba(252,250,245,0.94)_0%,rgba(224,216,204,0.76)_100%)] shadow-[0_20px_50px_rgba(31,24,18,0.2)]"
             style={{ aspectRatio: "1/1" }}
           >
             <CanvasGrid
@@ -598,7 +598,7 @@ export function Solver() {
             initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.25 }}
-            className="hidden xl:flex w-full max-w-[680px] mt-5 items-stretch bg-[linear-gradient(145deg,rgba(255,255,255,0.82),rgba(244,236,224,0.72))] backdrop-blur-xl rounded-sm border border-cafe-leather/12 shadow-xl overflow-hidden"
+            className="hidden xl:flex w-full max-w-[680px] mt-5 items-stretch bg-[linear-gradient(145deg,rgba(255,255,255,0.86),rgba(229,221,208,0.74))] backdrop-blur-xl rounded-sm border border-cafe-leather/14 shadow-xl overflow-hidden"
           >
             <button onClick={() => navigateClue(-1)} className="w-14 flex items-center justify-center hover:bg-cafe-leather/5 transition-all text-cafe-espresso/30 hover:text-cafe-honey">
               <ChevronLeft size={24} />
@@ -616,7 +616,7 @@ export function Solver() {
 
         <div
           className={clsx(
-            "w-full xl:w-[560px] shrink-0 xl:h-[calc(100vh-7rem)] fixed bottom-0 left-0 right-0 xl:static bg-[linear-gradient(165deg,rgba(254,249,242,0.98)_0%,rgba(244,233,215,0.95)_100%)] z-20 xl:z-10 shadow-[0_-14px_40px_rgba(44,24,16,0.12)] xl:shadow-[0_16px_34px_rgba(31,22,15,0.14)] border-t border-cafe-leather/12 xl:border xl:border-cafe-leather/10 xl:rounded-sm flex flex-col overflow-hidden transition-[height] duration-300",
+            "w-full xl:w-[560px] shrink-0 xl:h-[calc(100vh-7rem)] fixed bottom-0 left-0 right-0 xl:static bg-[linear-gradient(165deg,rgba(247,243,236,0.98)_0%,rgba(214,206,194,0.95)_100%)] z-20 xl:z-10 shadow-[0_-14px_40px_rgba(30,22,16,0.14)] xl:shadow-[0_16px_34px_rgba(30,22,16,0.16)] border-t border-cafe-leather/14 xl:border xl:border-cafe-leather/12 xl:rounded-sm flex flex-col overflow-hidden transition-[height] duration-300",
             sheetExpanded ? "h-[78vh]" : "h-[46vh]",
             "xl:h-[calc(100vh-7rem)]"
           )}
@@ -628,13 +628,13 @@ export function Solver() {
             <GripHorizontal size={18} />
           </button>
 
-          <div className="xl:hidden px-3 pt-3 pb-2 border-b border-cafe-leather/10 bg-cafe-paper/55 backdrop-blur-md">
-            <div className="relative grid grid-cols-2 rounded-sm border border-cafe-leather/10 bg-cafe-parchment/40 p-1">
+          <div className="xl:hidden px-3 pt-3 pb-2 border-b border-cafe-leather/12 bg-[linear-gradient(145deg,rgba(250,248,243,0.72),rgba(223,214,200,0.46))] backdrop-blur-md">
+            <div className="relative grid grid-cols-2 rounded-sm border border-cafe-leather/15 bg-[linear-gradient(145deg,rgba(255,255,255,0.5),rgba(217,208,193,0.32))] p-1">
               <motion.div
                 initial={false}
                 animate={{ x: direction === "across" ? "0%" : "100%" }}
                 transition={{ type: "spring", stiffness: 240, damping: 28 }}
-                className="absolute top-1 bottom-1 left-1 w-[calc(50%-4px)] rounded-sm bg-[linear-gradient(140deg,rgba(232,201,122,0.55)_0%,rgba(232,201,122,0.22)_100%)] border border-cafe-gold/40 shadow-[0_5px_16px_rgba(160,120,66,0.22)]"
+                className="absolute top-1 bottom-1 left-1 w-[calc(50%-4px)] rounded-sm bg-[linear-gradient(140deg,rgba(176,141,87,0.52)_0%,rgba(93,78,54,0.24)_100%)] border border-[#8c6a3b]/45 shadow-[0_5px_16px_rgba(111,79,35,0.26)]"
               />
               {(["across", "down"] as const).map((dir) => (
                 <button
@@ -656,7 +656,7 @@ export function Solver() {
             </div>
           </div>
 
-          <div className="hidden xl:grid xl:grid-cols-2 gap-3 p-3 border-b border-cafe-leather/10 bg-cafe-paper/45 backdrop-blur-md">
+          <div className="hidden xl:grid xl:grid-cols-2 gap-3 p-3 border-b border-cafe-leather/12 bg-[linear-gradient(145deg,rgba(252,250,246,0.6),rgba(220,212,199,0.42))] backdrop-blur-md">
             {(["across", "down"] as const).map((dir) => {
               const accent = dir === "across" ? "from-[#d8b06a]/45" : "from-[#6c8197]/35";
               const active = direction === dir;
@@ -671,8 +671,8 @@ export function Solver() {
                   className={clsx(
                     "relative rounded-sm border px-4 py-2.5 text-left transition-all",
                     active
-                      ? `border-cafe-gold/45 bg-[linear-gradient(140deg,rgba(248,236,212,0.95)_0%,rgba(255,255,255,0.8)_100%)] shadow-[0_8px_20px_rgba(115,84,44,0.2)]`
-                      : `border-cafe-leather/15 bg-[linear-gradient(140deg,rgba(255,255,255,0.8)_0%,rgba(245,235,220,0.62)_100%)] hover:border-cafe-gold/30`
+                      ? `border-[#8c6a3b]/45 bg-[linear-gradient(140deg,rgba(246,240,228,0.95)_0%,rgba(255,255,255,0.82)_100%)] shadow-[0_8px_20px_rgba(91,66,35,0.24)]`
+                      : `border-cafe-leather/20 bg-[linear-gradient(140deg,rgba(255,255,255,0.82)_0%,rgba(226,218,206,0.62)_100%)] hover:border-[#8c6a3b]/35`
                   )}
                 >
                   <span className={clsx("absolute inset-0 rounded-sm bg-gradient-to-r to-transparent opacity-35", accent)} />
@@ -700,10 +700,10 @@ export function Solver() {
                   className={clsx(
                     "flex flex-col h-full overflow-hidden",
                     direction !== dir ? "hidden xl:flex" : "flex",
-                    "xl:rounded-sm xl:border xl:border-cafe-leather/10 xl:bg-cafe-paper/62 xl:backdrop-blur-md"
+                    "xl:rounded-sm xl:border xl:border-cafe-leather/12 xl:bg-[linear-gradient(160deg,rgba(255,255,255,0.7),rgba(225,217,204,0.56))] xl:backdrop-blur-md"
                   )}
                 >
-                  <div className="px-4 py-3 border-b border-cafe-leather/10 bg-[linear-gradient(140deg,rgba(255,255,255,0.74)_0%,rgba(243,230,208,0.58)_100%)]">
+                  <div className="px-4 py-3 border-b border-cafe-leather/12 bg-[linear-gradient(140deg,rgba(255,255,255,0.74)_0%,rgba(217,209,195,0.6)_100%)]">
                     <div className="flex items-center justify-between gap-3">
                       <h2 className="font-display text-xl leading-none text-cafe-leather tracking-tight flex items-center gap-2">
                         {dir === "across" ? <ArrowRight size={17} className="text-cafe-honey" /> : <ArrowDown size={17} className="text-cafe-honey" />}
@@ -743,8 +743,8 @@ export function Solver() {
                           className={clsx(
                             "relative w-full text-left grid grid-cols-[42px_1fr] gap-2.5 items-start px-3 py-3 rounded-sm transition-all border border-transparent",
                             isActive
-                              ? "bg-[linear-gradient(96deg,rgba(232,201,122,0.3)_0%,rgba(255,247,232,0.82)_45%,rgba(255,255,255,0.9)_100%)] border-cafe-gold/30 shadow-[0_8px_20px_rgba(157,119,61,0.14)]"
-                              : "hover:bg-cafe-paper/75 hover:border-cafe-leather/10"
+                              ? "bg-[linear-gradient(96deg,rgba(176,141,87,0.26)_0%,rgba(238,233,225,0.84)_45%,rgba(255,255,255,0.9)_100%)] border-[#8c6a3b]/35 shadow-[0_8px_20px_rgba(101,76,44,0.2)]"
+                              : "hover:bg-[linear-gradient(96deg,rgba(255,255,255,0.72),rgba(229,221,208,0.52))] hover:border-cafe-leather/14"
                           )}
                         >
                           <span className={clsx("font-display text-lg leading-none pt-0.5 text-right", isActive ? "text-cafe-honey" : "text-cafe-leather/65")}>{clue.number}</span>
