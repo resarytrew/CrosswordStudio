@@ -616,9 +616,9 @@ export function Solver() {
 
         <div
           className={clsx(
-            "w-full xl:w-[760px] shrink-0 xl:h-[calc(100vh-7rem)] fixed bottom-0 left-0 right-0 xl:static bg-[linear-gradient(165deg,rgba(29,26,22,0.96)_0%,rgba(43,38,31,0.95)_100%)] z-20 xl:z-10 shadow-[0_-14px_40px_rgba(12,10,8,0.35)] xl:shadow-[0_16px_34px_rgba(12,10,8,0.4)] border-t border-[#6f8069]/30 xl:border xl:border-[#6f8069]/28 xl:rounded-sm flex flex-col overflow-hidden transition-[height] duration-300",
+            "w-full xl:w-[760px] shrink-0 xl:h-[min(680px,85vh)] fixed bottom-0 left-0 right-0 xl:static bg-[linear-gradient(165deg,rgba(29,26,22,0.96)_0%,rgba(43,38,31,0.95)_100%)] z-20 xl:z-10 shadow-[0_-14px_40px_rgba(12,10,8,0.35)] xl:shadow-[0_16px_34px_rgba(12,10,8,0.4)] border-t border-[#6f8069]/30 xl:border xl:border-[#6f8069]/28 xl:rounded-sm flex flex-col overflow-hidden transition-[height] duration-300",
             sheetExpanded ? "h-[78vh]" : "h-[46vh]",
-            "xl:h-[calc(100vh-7rem)]"
+            "xl:h-[min(680px,85vh)]"
           )}
         >
           <button
@@ -656,38 +656,6 @@ export function Solver() {
             </div>
           </div>
 
-          <div className="hidden xl:grid xl:grid-cols-2 gap-3 p-3 border-b border-[#6f8069]/22 bg-[linear-gradient(145deg,rgba(24,35,26,0.74),rgba(38,52,38,0.54))] backdrop-blur-md">
-            {(["across", "down"] as const).map((dir) => {
-              const accent = dir === "across" ? "from-[#9dbf8f]/35" : "from-[#6d8a66]/35";
-              const active = direction === dir;
-              return (
-                <button
-                  key={dir}
-                  type="button"
-                  onClick={() => {
-                    setDirection(dir);
-                    triggerHaptic(10);
-                  }}
-                  className={clsx(
-                    "relative rounded-sm border px-4 py-2.5 text-left transition-all",
-                    active
-                      ? `border-[#8bab84]/45 bg-[linear-gradient(140deg,rgba(86,103,82,0.65)_0%,rgba(51,45,38,0.7)_100%)] shadow-[0_8px_20px_rgba(20,19,15,0.35)]`
-                      : `border-[#6f8069]/24 bg-[linear-gradient(140deg,rgba(32,43,33,0.78)_0%,rgba(44,58,43,0.68)_100%)] hover:border-[#8bab84]/35`
-                  )}
-                >
-                  <span className={clsx("absolute inset-0 rounded-sm bg-gradient-to-r to-transparent opacity-35", accent)} />
-                  <span className="relative flex items-center justify-between">
-                    <span className="flex items-center gap-2 font-subhead text-sm font-bold tracking-[0.08em] text-[#f3eee2] uppercase">
-                      {dir === "across" ? <ArrowRight size={14} /> : <ArrowDown size={14} />}
-                      {t(dir)}
-                    </span>
-                    <span className="font-mono text-xs text-[#d3cab9]/70">{board.clues[dir].length}</span>
-                  </span>
-                </button>
-              );
-            })}
-          </div>
-
           <div className="flex-1 overflow-hidden xl:grid xl:grid-cols-2 xl:gap-3 xl:p-3">
             {(["across", "down"] as const).map((dir) => {
               const accentRail = dir === "across" ? "from-[#a8c39a]/75" : "from-[#7ea178]/70";
@@ -700,20 +668,32 @@ export function Solver() {
                   className={clsx(
                     "flex flex-col h-full overflow-hidden",
                     direction !== dir ? "hidden xl:flex" : "flex",
-                    "xl:rounded-sm xl:border xl:border-[#6f8069]/25 xl:bg-[linear-gradient(160deg,rgba(31,43,33,0.8),rgba(44,58,42,0.6))] xl:backdrop-blur-md"
+                    "xl:rounded-sm xl:border xl:border-[#c4b79f]/45 xl:bg-[linear-gradient(165deg,#fcf8ef_0%,#f7f2e8_100%)] xl:backdrop-blur-md"
                   )}
                 >
-                  <div className="px-4 py-3 border-b border-[#6f8069]/24 bg-[linear-gradient(140deg,rgba(28,40,30,0.84)_0%,rgba(40,55,40,0.7)_100%)]">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setDirection(dir);
+                      triggerHaptic(10);
+                    }}
+                    className={clsx(
+                      "hidden xl:block px-4 py-3 border-b text-left transition-colors",
+                      direction === dir
+                        ? "border-[#c3b598] bg-[linear-gradient(135deg,#f4ebdb_0%,#efe4cf_100%)]"
+                        : "border-[#d7cbb7] bg-[linear-gradient(135deg,#faf4e8_0%,#f2e8d7_100%)] hover:bg-[linear-gradient(135deg,#f6ecdb_0%,#ecdfc8_100%)]"
+                    )}
+                  >
                     <div className="flex items-center justify-between gap-3">
-                      <h2 className="font-display text-xl leading-none text-[#f4efe4] tracking-tight flex items-center gap-2">
-                        {dir === "across" ? <ArrowRight size={17} className="text-[#b3cda0]" /> : <ArrowDown size={17} className="text-[#b3cda0]" />}
+                      <h2 className="font-display text-2xl leading-none text-[#1f2a36] tracking-tight flex items-center gap-2">
+                        {dir === "across" ? <ArrowRight size={18} className="text-[#5a7b52]" /> : <ArrowDown size={18} className="text-[#5a7b52]" />}
                         {t(dir)}
                       </h2>
-                      <span className="font-mono text-xs px-2 py-1 rounded-sm bg-[#20241e] text-[#d4cbbb]/70 border border-[#6f8069]/25">
+                      <span className="font-mono text-xs px-2 py-1 rounded-sm bg-[#edf3e4] text-[#3a5240] border border-[#c8d6b7]">
                         {board.clues[dir].length}
                       </span>
                     </div>
-                  </div>
+                  </button>
 
                   <div className="flex-1 overflow-y-auto scroll-smooth px-1 py-1">
                     {board.clues[dir].map((clue, index) => {
@@ -741,21 +721,21 @@ export function Solver() {
                             triggerHaptic(10);
                           }}
                           className={clsx(
-                            "relative w-full text-left grid grid-cols-[42px_1fr] gap-2.5 items-start px-3 py-3 rounded-sm transition-all border border-transparent",
+                            "relative w-full text-left grid grid-cols-[1fr_48px] gap-2.5 items-start px-3 py-3 rounded-sm transition-all border border-transparent",
                             isActive
-                              ? "bg-[linear-gradient(96deg,rgba(98,122,95,0.36)_0%,rgba(66,81,62,0.44)_45%,rgba(44,40,34,0.62)_100%)] border-[#8bab84]/38 shadow-[0_8px_20px_rgba(12,11,9,0.35)]"
-                              : "hover:bg-[linear-gradient(96deg,rgba(44,58,43,0.68),rgba(51,66,49,0.56))] hover:border-[#6f8069]/28"
+                              ? "bg-[linear-gradient(96deg,rgba(220,234,206,0.86)_0%,rgba(247,242,232,0.95)_56%,rgba(252,248,239,1)_100%)] border-[#9fb88f]/50 shadow-[0_8px_20px_rgba(62,88,58,0.2)]"
+                              : "bg-[linear-gradient(96deg,#fcf8ef,#f8f3e7)] hover:bg-[linear-gradient(96deg,#f7f1e2,#f2e8d3)] hover:border-[#cdbd9e]/55"
                           )}
                         >
-                          <span className={clsx("font-display text-lg leading-none pt-0.5 text-right", isActive ? "text-[#d3e2c1]" : "text-[#cabfae]/72")}>{clue.number}</span>
-                          <span className={clsx("font-body text-[15px] leading-relaxed", isActive ? "text-[#f5f0e5]" : "text-[#ddd4c4]")}>{clue.text || <span className="text-[#d7ccbb]/45 italic">{t("noClue")}</span>}</span>
+                          <span className={clsx("font-body text-[17px] leading-relaxed text-right", isActive ? "text-[#1f2a36]" : "text-[#253241]")}>{clue.text || <span className="text-[#6f7f90]/50 italic">{t("noClue")}</span>}</span>
+                          <span className={clsx("font-display text-xl leading-none pt-0.5 text-right", isActive ? "text-[#1f2a36]" : "text-[#2f3d4f]/75")}>{clue.number}</span>
                           {isActive && (
                             <>
                               <motion.span
                                 layoutId="active-clue-rail"
                                 className={clsx("absolute left-0 top-1.5 bottom-1.5 w-1 rounded-r-sm bg-gradient-to-b to-transparent", accentRail)}
                               />
-                              <span className="pointer-events-none absolute inset-y-0 right-2 w-12 bg-gradient-to-l from-[#8bab84]/28 to-transparent" />
+                              <span className="pointer-events-none absolute inset-y-0 right-2 w-16 bg-gradient-to-l from-[#9db897]/30 to-transparent" />
                             </>
                           )}
                         </motion.button>
