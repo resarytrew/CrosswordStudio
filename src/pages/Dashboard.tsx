@@ -1,4 +1,6 @@
 import React, { useEffect, useState } from 'react';
+import { motion } from 'framer-motion';
+import { BookMarked, BookOpen, Clock, Coffee, Feather, Grid3X3, PenTool, Play, Plus, Sparkles } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { useLanguage } from '../contexts/LanguageContext';
 import { useCafe } from '../contexts/CafeContext';
@@ -9,6 +11,7 @@ import { Crossword, BoardState } from '../types';
 import { createEmptyGrid, updateGridNumbers } from '../lib/gridUtils';
 import { computeAnswersHash } from '../lib/crypto';
 import { parseBoardState } from '../lib/boardParser';
+import { templates, type Template } from '../lib/templates';
 import { Steam, FloatingParticles, LampGlow, CoffeeBean, BookSpine, PageCurl, SuccessBurst } from '../components/CafeAnimations';
 
 /* ─────────────── helpers ─────────────── */
