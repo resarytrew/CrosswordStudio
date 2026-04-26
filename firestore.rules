@@ -16,7 +16,7 @@ service cloud.firestore {
         && data.keys().size() == 7
         && data.authorId is string && data.authorId == request.auth.uid
         && data.title is string && data.title.size() <= 100
-        && data.boardState is string && data.boardState.size() <= 500000
+        && data.boardState is map
         && data.answersHash is string && data.answersHash.size() <= 64
         && data.createdAt is number
         && data.updatedAt is number
@@ -27,7 +27,7 @@ service cloud.firestore {
       return data.authorId == old.authorId
         && data.createdAt == old.createdAt
         && data.title is string && data.title.size() <= 100
-        && data.boardState is string && data.boardState.size() <= 500000
+        && data.boardState is map
         && data.answersHash is string && data.answersHash.size() <= 64
         && data.updatedAt is number
         && data.isPublished is bool;

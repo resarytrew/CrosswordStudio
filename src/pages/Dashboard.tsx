@@ -7,9 +7,8 @@ import { db, handleFirestoreError } from '../lib/firebase';
 import { collection, query, where, getDocs, setDoc, doc, orderBy, limit } from 'firebase/firestore';
 import { Crossword, BoardState } from '../types';
 import { createEmptyGrid, updateGridNumbers } from '../lib/gridUtils';
-import { Plus, Play, PenTool, BookOpen, Coffee, Feather, Clock, Grid3X3, Sparkles, BookMarked, ArrowRight } from 'lucide-react';
-import { motion, AnimatePresence } from 'motion/react';
-import { templates, Template } from '../lib/templates';
+import { computeAnswersHash } from '../lib/crypto';
+import { parseBoardState } from '../lib/boardParser';
 import { Steam, FloatingParticles, LampGlow, CoffeeBean, BookSpine, PageCurl, SuccessBurst } from '../components/CafeAnimations';
 
 /* ─────────────── helpers ─────────────── */
@@ -106,7 +105,8 @@ export function Dashboard() {
     }
     let boardState: BoardState = { width: template.width, height: template.height, grid, clues: { across: [], down: [] } };
     boardState = updateGridNumbers(boardState);
-    const newPw: Crossword = { authorId: user.uid, title: language === 'ru' ? template.nameRu : template.name, boardState: JSON.stringify(boardState), createdAt: Date.now(), updatedAt: Date.now(), isPublished: false };
+    const answersHash = computeAnswersHash(boardState);
+    const newPw: Crossword = { authorId: user.uid, title: language === 'ru' ? template.nameRu : template.name, boardState, answersHash, createdAt: Date.now(), updatedAt: Date.now(), isPublished: false };
     try { await setDoc(doc(db, 'crosswords', newId), newPw); navigate(`/editor/${newId}`); }
     catch (err) { handleFirestoreError(err, 'create', `/crosswords/${newId}`); }
   };
@@ -116,7 +116,8 @@ export function Dashboard() {
     playSound('book-open');
     const newId = crypto.randomUUID();
     const boardState = createEmptyGrid(15, 15);
-    const newPw: Crossword = { authorId: user.uid, title: 'Untitled Crossword', boardState: JSON.stringify(boardState), createdAt: Date.now(), updatedAt: Date.now(), isPublished: false };
+    const answersHash = computeAnswersHash(boardState);
+    const newPw: Crossword = { authorId: user.uid, title: 'Untitled Crossword', boardState, answersHash, createdAt: Date.now(), updatedAt: Date.now(), isPublished: false };
     try { await setDoc(doc(db, 'crosswords', newId), newPw); navigate(`/editor/${newId}`); }
     catch (err) { handleFirestoreError(err, 'create', `/crosswords/${newId}`); }
   };
@@ -409,8 +410,7 @@ export function Dashboard() {
             className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5"
           >
             {crosswords.map((cw) => {
-              let board: BoardState | null = null;
-              try { board = JSON.parse(cw.boardState) as BoardState; } catch {}
+              const board = parseBoardState(cw.boardState);
               const wordCount = board ? board.clues.across.length + board.clues.down.length : 0;
               const filledLetters = board ? board.grid.filter(c => !c.isBlock && !c.isHidden && c.value).length : 0;
 

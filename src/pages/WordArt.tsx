@@ -6,6 +6,7 @@ import { useAuth } from '../contexts/AuthContext';
 import { useLanguage } from '../contexts/LanguageContext';
 import { useCafe } from '../contexts/CafeContext';
 import { BoardState, Crossword } from '../types';
+import { parseBoardState } from '../lib/boardParser';
 import { Download, Share2, Instagram, Twitter, Copy, Check, Palette, Sparkles, Type, Sunrise } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 
@@ -127,7 +128,10 @@ export function WordArtExport() {
         if (d.exists()) {
           const data = d.data() as Crossword;
           setCw(data);
-          setBoard(JSON.parse(data.boardState) as BoardState);
+          const parsed = parseBoardState(data.boardState);
+          if (parsed) {
+            setBoard(parsed);
+          }
         }
       } catch (err) {
         handleFirestoreError(err, 'get', `/crosswords/${id}`);

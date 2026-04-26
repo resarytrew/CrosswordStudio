@@ -8,6 +8,7 @@ import { useCafe } from '../contexts/CafeContext';
 import { BoardState, Clue, Crossword, GridCell } from '../types';
 import { updateGridNumbers } from '../lib/gridUtils';
 import { computeAnswersHash } from '../lib/crypto';
+import { parseBoardState } from '../lib/boardParser';
 import { Save, Share2, ArrowLeft, ArrowRight, ArrowDown, Trash2, LayoutGrid, Hash, CheckSquare, AlertTriangle, Bookmark, Sparkles, Image } from 'lucide-react';
 import { LampGlow, InkDrop, BookSpine } from '../components/CafeAnimations';
 import { CanvasGrid } from '../components/CanvasGrid';
@@ -46,7 +47,10 @@ export function Editor() {
           }
           setCw(data);
           setTitle(data.title);
-          setBoard(JSON.parse(data.boardState) as BoardState);
+          const parsed = parseBoardState(data.boardState);
+          if (parsed) {
+            setBoard(parsed);
+          }
         }
       } catch (err) {
         handleFirestoreError(err, 'get', `/crosswords/${id}`);
@@ -62,7 +66,7 @@ export function Editor() {
       const answersHash = computeAnswersHash(currentBoard);
       const updates: Partial<Crossword> = {
         title: currentTitle,
-        boardState: JSON.stringify(currentBoard),
+        boardState: currentBoard,
         answersHash,
         updatedAt: Date.now()
       };

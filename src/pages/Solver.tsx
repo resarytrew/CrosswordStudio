@@ -6,6 +6,7 @@ import { useAuth } from "../contexts/AuthContext";
 import { useLanguage } from "../contexts/LanguageContext";
 import { useCafe } from "../contexts/CafeContext";
 import { BoardState, Crossword, Progress } from "../types";
+import { parseBoardState } from "../lib/boardParser";
 import clsx from "clsx";
 import {
   CheckCircle2, ArrowRight, ArrowDown, ArrowLeft,
@@ -45,12 +46,14 @@ export function Solver() {
         if (!d.exists()) return;
         const data = d.data() as Crossword;
         setCw(data);
-        const b = JSON.parse(data.boardState) as BoardState;
-        setBoard(b);
-        for (let y = 0; y < b.height; y++) {
-          for (let x = 0; x < b.width; x++) {
-            const c = b.grid.find(c => c.x === x && c.y === y);
-            if (c && !c.isBlock && !c.isHidden) { setSelectedCell({ x, y }); return; }
+        const b = parseBoardState(data.boardState);
+        if (b) {
+          setBoard(b);
+          for (let y = 0; y < b.height; y++) {
+            for (let x = 0; x < b.width; x++) {
+              const c = b.grid.find(c => c.x === x && c.y === y);
+              if (c && !c.isBlock && !c.isHidden) { setSelectedCell({ x, y }); return; }
+            }
           }
         }
       } catch (err) { handleFirestoreError(err, "get", `/crosswords/${id}`); }

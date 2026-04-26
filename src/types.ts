@@ -2,8 +2,8 @@ export interface Crossword {
   id?: string;
   authorId: string;
   title: string;
-  boardState: string; // JSON string of BoardState
-  answersHash?: string; // SHA-256 hash of answers (for verification without exposing values)
+  boardState: BoardState;
+  answersHash?: string;
   createdAt: number;
   updatedAt: number;
   isPublished: boolean;
@@ -12,13 +12,13 @@ export interface Crossword {
 export interface CrosswordAnswers {
   crosswordId: string;
   authorId: string;
-  answers: string; // JSON Record<string, string> mapping "x,y" to letter
+  answers: string;
 }
 
 export interface BoardState {
   width: number;
   height: number;
-  grid: GridCell[]; // width * height length
+  grid: GridCell[];
   clues: {
     across: Clue[];
     down: Clue[];
@@ -30,8 +30,8 @@ export interface GridCell {
   y: number;
   isBlock: boolean;
   isHidden?: boolean;
-  value?: string; // Only available to author in crosswordAnswers
-  number: number | null; // e.g., 1, 2, 3...
+  value?: string;
+  number: number | null;
 }
 
 export interface Clue {
@@ -46,7 +46,7 @@ export interface Progress {
   id?: string;
   userId: string;
   crosswordId: string;
-  answers: string; // JSON Record<string, string> mapping "x,y" to letter
+  answers: string;
   timer: number;
   isCompleted: boolean;
   lastUpdated: number;
