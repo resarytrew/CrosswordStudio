@@ -11,7 +11,7 @@ service cloud.firestore {
     function incoming() { return request.resource.data; }
     function existing() { return resource.data; }
 
-    function isValidCrossword(data) {
+function isValidCrossword(data) {
       return data.keys().hasAll(['authorId', 'title', 'boardState', 'answersHash', 'createdAt', 'updatedAt', 'isPublished'])
         && data.authorId is string && data.authorId == request.auth.uid
         && data.title is string && data.title.size() <= 100
@@ -19,10 +19,11 @@ service cloud.firestore {
         && data.answersHash is string && data.answersHash.size() <= 64
         && data.createdAt is number && data.createdAt > 0
         && data.updatedAt is number && data.updatedAt > 0
-        && data.isPublished is bool;
+        && data.isPublished is bool
+        && (data.isTemplate == null || data.isTemplate is bool);
     }
 
-    function isValidCrosswordUpdate(data, old) {
+function isValidCrosswordUpdate(data, old) {
       return data.keys().hasAll(['authorId', 'title', 'boardState', 'answersHash', 'createdAt', 'updatedAt', 'isPublished'])
         && data.authorId == old.authorId
         && data.createdAt == old.createdAt
@@ -30,7 +31,8 @@ service cloud.firestore {
         && data.boardState is map
         && data.answersHash is string && data.answersHash.size() <= 64
         && data.updatedAt is number && data.updatedAt >= old.updatedAt
-        && data.isPublished is bool;
+        && data.isPublished is bool
+        && (data.isTemplate == null || data.isTemplate is bool);
     }
 
     match /crosswords/{crosswordId} {
@@ -44,7 +46,7 @@ service cloud.firestore {
       allow create: if isValidId(crosswordId) && isSignedIn() && isValidCrossword(incoming());
       
       allow update: if isValidId(crosswordId) && isSignedIn() && existing().authorId == request.auth.uid && (
-        incoming().diff(existing()).affectedKeys().hasAny(['title', 'boardState', 'answersHash', 'updatedAt', 'isPublished']) &&
+        incoming().diff(existing()).affectedKeys().hasAny(['title', 'boardState', 'answersHash', 'updatedAt', 'isPublished', 'isTemplate']) &&
         isValidCrosswordUpdate(incoming(), existing())
       );
 
