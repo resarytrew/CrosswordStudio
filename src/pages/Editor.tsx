@@ -27,12 +27,18 @@ export function Editor() {
   
   const [selectedCell, setSelectedCell] = useState<{x: number, y: number} | null>(null);
   const [direction, setDirection] = useState<'across' | 'down'>('across');
+  const [mobileCluePanel, setMobileCluePanel] = useState<'across' | 'down'>('across');
   const [cellAnimations, setCellAnimations] = useState<Record<string, 'fill' | 'block' | null>>({});
   
   const [saving, setSaving] = useState(false);
   const [title, setTitle] = useState('');
 
   const gridRef = useRef<HTMLDivElement>(null);
+
+  const triggerHaptic = useCallback((pattern: number | number[]) => {
+    if (typeof navigator === 'undefined' || typeof navigator.vibrate !== 'function') return;
+    navigator.vibrate(pattern);
+  }, []);
 
   useEffect(() => {
     if (!id || !user) return;
@@ -196,14 +202,20 @@ export function Editor() {
     };
   }, [selectedCell, board, getWordBounds]);
 
+  useEffect(() => {
+    setMobileCluePanel(direction);
+  }, [direction]);
+
   if (!board) return <div className="p-8 text-center animate-pulse font-body text-cafe-espresso/60">{t('loadingEditor')}</div>;
 
   const handleCellClick = (x: number, y: number) => {
     if (selectedCell?.x === x && selectedCell?.y === y) {
       setDirection(d => d === 'across' ? 'down' : 'across');
+      triggerHaptic(10);
     } else {
       setSelectedCell({ x, y });
       playSound('cell-select');
+      triggerHaptic(8);
     }
   };
 
@@ -257,6 +269,7 @@ export function Editor() {
     setBoard(newBoard);
     // Play block toggle sound
     playSound('block-toggle');
+    triggerHaptic([10, 16, 10]);
     const key = `${x}-${y}`;
     setCellAnimations(prev => ({ ...prev, [key]: 'block' }));
     setTimeout(() => {
@@ -295,6 +308,7 @@ export function Editor() {
       const key = `${x}-${y}`;
       setCellAnimations(prev => ({ ...prev, [key]: 'fill' }));
       playSound('letter-input');
+      triggerHaptic(8);
       setTimeout(() => {
         setCellAnimations(prev => ({ ...prev, [key]: null }));
       }, 300);
@@ -365,100 +379,121 @@ export function Editor() {
   };
 
   return (
-    <div className="flex flex-col h-full bg-cafe-cream overflow-hidden" onKeyDown={handleKeyDown} tabIndex={0}>
-      <div className="h-16 flex items-center justify-between px-6 bg-cafe-paper border-b border-cafe-leather/10 shadow-sm shrink-0 relative z-20">
-        <div className="flex items-center gap-4">
-          <BookSpine className="text-cafe-leather/30" />
-          <motion.button 
-             whileHover={{ scale: 1.05 }}
-             whileTap={{ scale: 0.95 }}
-             onClick={() => navigate('/')} 
-             className="text-cafe-espresso/50 hover:text-cafe-leather transition-colors p-1.5 hover:bg-cafe-leather/5 rounded-sm"
-         >
-            <ArrowLeft size={20} />
+    <div
+      className="flex flex-col h-full bg-[radial-gradient(circle_at_16%_14%,rgba(143,176,138,0.24),transparent_33%),radial-gradient(circle_at_84%_82%,rgba(63,86,62,0.28),transparent_40%),linear-gradient(180deg,#162118_0%,#223126_40%,#2f4333_100%)] overflow-hidden relative"
+      onKeyDown={handleKeyDown}
+      tabIndex={0}
+    >
+      <div className="h-14 flex items-center justify-between px-4 sm:px-6 bg-[linear-gradient(90deg,rgba(18,30,20,0.9),rgba(30,45,31,0.88))] backdrop-blur-xl border-b border-[#8bab84]/30 shrink-0 relative z-20">
+        <div className="flex items-center gap-3 min-w-0">
+          <BookSpine className="text-[#9eb197]/35 hidden sm:block" />
+          <motion.button
+            whileTap={{ scale: 0.95 }}
+            onClick={() => navigate('/')}
+            className="text-[#c7d0bd]/55 hover:text-[#f0f4e9] transition-colors p-1.5 hover:bg-[#6d8968]/25 rounded-sm"
+          >
+            <ArrowLeft size={18} />
           </motion.button>
-          <div className="h-6 w-px bg-cafe-leather/10" />
-          <input 
+          <div className="h-5 w-px bg-[#8bab84]/35" />
+          <input
             value={title}
             onChange={(e) => setTitle(e.target.value)}
             onKeyDown={e => e.stopPropagation()}
             placeholder={t('untitled')}
-            className="text-xl font-display font-bold text-cafe-leather bg-transparent outline-none py-1 focus:ring-2 focus:ring-cafe-gold/20 rounded px-2 -ml-2 transition-all placeholder:text-cafe-leather/30 w-48 sm:w-64"
+            className="text-lg sm:text-xl font-display font-bold text-[#edf2e3] bg-transparent outline-none py-1 rounded px-2 transition-all placeholder:text-[#aeb9a4]/55 w-48 sm:w-64"
           />
-          <div className="hidden sm:flex items-center gap-2 ml-4 px-3 py-1.5 bg-cafe-leather/5 border border-cafe-leather/10 rounded-sm text-sm text-cafe-espresso/70">
-            <span className="font-body text-cafe-espresso/50">{t('size')}:</span>
-            <select 
+          <div className="hidden sm:flex items-center gap-2 ml-2 px-2.5 py-1 bg-[linear-gradient(120deg,rgba(78,104,76,0.42),rgba(28,40,28,0.65))] border border-[#8bab84]/36 rounded-sm text-xs text-[#dce6d4]/80">
+            <span className="font-body">{t('size')}:</span>
+            <select
               value={board.width}
-              onChange={(e) => handleResize(Number(e.target.value))}
-              className="bg-transparent font-display font-semibold outline-none cursor-pointer text-cafe-honey"
+              onChange={(e) => {
+                handleResize(Number(e.target.value));
+                triggerHaptic(10);
+              }}
+              className="bg-transparent font-display font-semibold outline-none cursor-pointer text-[#d3e2c1]"
             >
-              <option value={5}>5 × 5</option>
-              <option value={10}>10 × 10</option>
-              <option value={15}>15 × 15</option>
-              <option value={21}>21 × 21</option>
+              <option value={5}>5 x 5</option>
+              <option value={10}>10 x 10</option>
+              <option value={15}>15 x 15</option>
+              <option value={21}>21 x 21</option>
             </select>
           </div>
         </div>
-        <div className="flex items-center gap-3">
-          <motion.button 
-            whileHover={{ scale: 1.02 }}
-            whileTap={{ scale: 0.98 }}
+
+        <div className="flex items-center gap-2 sm:gap-3">
+          <motion.button
+            whileTap={{ scale: 0.96 }}
             onClick={clearGrid}
-            className="flex items-center gap-2 px-3 py-2 text-cafe-espresso/40 hover:text-cafe-wine hover:bg-cafe-wine/5 rounded-sm font-body font-medium text-sm transition-all"
+            className="flex items-center gap-2 px-3 py-2 text-[#d4cab9]/55 hover:text-[#f1cfbc] hover:bg-[#5c4237]/28 rounded-sm font-body font-medium text-sm transition-all"
             title={t('clearGrid')}
-         >
+          >
             <Trash2 size={16} />
           </motion.button>
-          <motion.button 
-            whileHover={{ scale: 1.02 }}
-            whileTap={{ scale: 0.98 }}
+
+          <motion.button
+            whileTap={{ scale: 0.97 }}
             onClick={() => save(board, title)}
-            className="flex items-center gap-2 px-4 py-2 bg-cafe-paper border border-cafe-leather/20 hover:border-cafe-leather/40 hover:bg-cafe-leather/5 text-cafe-leather rounded-sm font-subhead font-semibold text-sm transition-all"
-         >
-            <Save size={16} className={saving ? "animate-pulse text-cafe-honey" : "text-cafe-espresso/50"} />
+            className="flex items-center gap-2 px-3 sm:px-4 py-2 bg-[linear-gradient(120deg,rgba(79,109,75,0.5),rgba(24,35,24,0.72))] border border-[#8bab84]/36 text-[#eff5e5] rounded-sm font-subhead font-semibold text-sm transition-all"
+          >
+            <Save size={16} className={saving ? 'animate-pulse text-[#d3e2c1]' : 'text-[#d8e6c7]'} />
             {saving ? t('saving') : t('save')}
           </motion.button>
-          <motion.button 
-             whileHover={{ scale: 1.02 }}
-             whileTap={{ scale: 0.98 }}
-             onClick={() => {
-               playSound('success');
-               navigate(`/wordart/${id}`);
-             }}
-             className="flex items-center gap-2 px-4 py-2 bg-cafe-wine/10 text-cafe-wine border border-cafe-wine/20 hover:bg-cafe-wine/20 rounded-sm font-subhead font-semibold text-sm transition-all"
-           >
-             <Image size={16} />
-Word Art
-            </motion.button>
-            <motion.button 
-              whileHover={{ scale: 1.02 }}
-              whileTap={{ scale: 0.98 }}
-              onClick={() => {
-                playSound('save');
-                save(board, title);
-                const shareUrl = `${window.location.origin}/play/${id}`;
-                navigator.clipboard.writeText(shareUrl);
-                alert('Link copied to clipboard!');
-              }}
-              className="flex items-center gap-2 px-4 py-2 bg-cafe-gold/10 text-cafe-honey border border-cafe-gold/30 hover:bg-cafe-gold/20 rounded-sm font-subhead font-semibold text-sm transition-all"
-           >
-             <Share2 size={16} />
-             Share Link
-           </motion.button>
-           <motion.button 
-              whileHover={{ scale: 1.02 }}
-              whileTap={{ scale: 0.98 }}
-              onClick={() => save(board, title, !cw?.isPublished)}
-              className={clsx("flex items-center gap-2 px-4 py-2 rounded-sm font-subhead font-semibold text-sm transition-all", cw?.isPublished ? "bg-cafe-gold/10 text-cafe-honey border border-cafe-gold/30 hover:bg-cafe-gold/20" : "bg-cafe-leather text-cafe-paper hover:bg-cafe-espresso hover:shadow-md")}
-           >
-             {cw?.isPublished ? t('published') : t('publish')}
-           </motion.button>
+
+          <motion.button
+            whileTap={{ scale: 0.97 }}
+            onClick={() => {
+              playSound('success');
+              triggerHaptic(12);
+              navigate(`/wordart/${id}`);
+            }}
+            className="hidden sm:flex items-center gap-2 px-4 py-2 bg-[#5a7058]/42 text-[#e8f0de] border border-[#8bab84]/40 rounded-sm font-subhead font-semibold text-sm transition-all"
+          >
+            <Image size={16} />
+            Word Art
+          </motion.button>
+
+          <motion.button
+            whileTap={{ scale: 0.97 }}
+            onClick={() => {
+              playSound('save');
+              triggerHaptic(10);
+              save(board, title);
+              const shareUrl = `${window.location.origin}/play/${id}`;
+              navigator.clipboard.writeText(shareUrl);
+              alert('Link copied to clipboard!');
+            }}
+            className="hidden sm:flex items-center gap-2 px-4 py-2 bg-[#556a4f]/42 text-[#e9f1df] border border-[#9db897]/35 rounded-sm font-subhead font-semibold text-sm transition-all"
+          >
+            <Share2 size={16} />
+            Share Link
+          </motion.button>
+
+          <motion.button
+            whileTap={{ scale: 0.97 }}
+            onClick={() => {
+              triggerHaptic([10, 14, 10]);
+              save(board, title, !cw?.isPublished);
+            }}
+            className={clsx(
+              'flex items-center gap-2 px-3 sm:px-4 py-2 rounded-sm font-subhead font-semibold text-sm transition-all',
+              cw?.isPublished
+                ? 'bg-[#556a4f]/46 text-[#edf4e4] border border-[#9db897]/35'
+                : 'bg-[#334a35] text-[#eef3e7] border border-[#8bab84]/30 hover:bg-[#48624a]'
+            )}
+          >
+            {cw?.isPublished ? t('published') : t('publish')}
+          </motion.button>
         </div>
       </div>
 
-<div className="flex-1 overflow-hidden flex flex-col md:flex-row p-0 sm:p-6 gap-6 sm:gap-8 max-w-[1600px] mx-auto w-full">
-        <div className="flex-1 flex items-center justify-center overflow-auto p-4 max-h-[85vh]">
-          <div className="w-full max-w-[600px]" style={{ aspectRatio: '1/1' }}>
+      <div className="flex-1 overflow-hidden flex flex-col xl:flex-row p-0 sm:p-4 md:p-6 gap-4 xl:gap-6 max-w-[1700px] mx-auto w-full relative z-10 xl:items-start">
+        <div className="flex-1 flex flex-col items-center justify-start overflow-y-auto overflow-x-hidden p-3 pb-[22rem] xl:pb-4 max-h-[85vh] xl:sticky xl:top-4">
+          <motion.div
+            whileTap={{ scale: 0.998 }}
+            transition={{ duration: 0.12 }}
+            className="relative w-full max-w-[680px] rounded-sm border border-[#6b5f4d]/45 p-2 bg-[linear-gradient(165deg,rgba(236,228,214,0.92)_0%,rgba(170,157,138,0.48)_100%)] shadow-[0_20px_50px_rgba(11,10,8,0.4)]"
+            style={{ aspectRatio: '1/1' }}
+          >
             <CanvasGrid
               board={board}
               selectedCell={selectedCell}
@@ -467,112 +502,164 @@ Word Art
               onCellClick={handleCellClick}
               editable={true}
             />
-          </div>
+          </motion.div>
         </div>
 
-        <div className="w-full md:w-[32rem] lg:w-[38rem] flex flex-col h-1/2 md:h-full gap-4 md:gap-6 shrink-0 relative z-10">
-          <motion.div 
-             initial={{ opacity: 0, x: 20 }}
-             animate={{ opacity: 1, x: 0 }}
-             transition={{ duration: 0.4, ease: "easeOut", delay: 0.1 }}
-             className="bg-cafe-paper border border-cafe-leather/10 rounded-sm shadow-lg shadow-cafe-leather/10 flex flex-col flex-1 overflow-hidden"
-          >
-            {stats && (
-              <div className="p-3 border-b border-cafe-leather/10 bg-cafe-parchment/50 grid grid-cols-2 gap-3 text-xs shrink-0">
-                <div className="flex items-center gap-2.5 text-cafe-espresso/70 bg-cafe-paper px-2 py-1.5 rounded-sm border border-cafe-leather/10">
-                  <div className="bg-cafe-gold/20 p-1 rounded"><Hash size={12} className="text-cafe-honey" /></div>
-                  <span className="font-body text-cafe-espresso/60">{t('statsTotalWords')}: <strong className="text-cafe-leather ml-1">{stats.wordCount}</strong></span>
-                </div>
-                <div className="flex items-center gap-2.5 text-cafe-espresso/70 bg-cafe-paper px-2 py-1.5 rounded-sm border border-cafe-leather/10">
-                  <div className="bg-cafe-gold/20 p-1 rounded"><LayoutGrid size={12} className="text-cafe-honey" /></div>
-                  <span className="font-body text-cafe-espresso/60">{t('statsBlockPct')}: <strong className="text-cafe-leather ml-1">{stats.blockPercentage}%</strong></span>
-                </div>
-                <div className="flex items-center gap-2.5 text-cafe-espresso/70 bg-cafe-paper px-2 py-1.5 rounded-sm border border-cafe-leather/10">
-                  <div className={clsx("p-1 rounded", stats.emptyClues > 0 ? "bg-cafe-wine/20" : "bg-cafe-leather/20")}>
-                    <CheckSquare size={12} className={stats.emptyClues > 0 ? "text-cafe-wine" : "text-cafe-leather"} />
-                  </div>
-                  <span className="font-body text-cafe-espresso/60">{t('statsEmptyClues')}: <strong className={clsx("ml-1", stats.emptyClues > 0 ? "text-cafe-wine" : "text-cafe-leather")}>{stats.emptyClues}</strong></span>
-                </div>
-                {!stats.isConnected && (
-                  <div className="col-span-2 flex items-center gap-2.5 mt-1 text-cafe-wine bg-cafe-wine/5 p-2 rounded-sm border border-cafe-wine/20">
-                    <AlertTriangle size={14} />
-                    <span className="font-body font-medium">{t('connectedWarning')}</span>
-                  </div>
-                )}
+        <div
+          className={clsx(
+            'w-full xl:w-[760px] shrink-0 xl:h-[min(680px,85vh)] fixed bottom-0 left-0 right-0 xl:static bg-[linear-gradient(165deg,rgba(29,26,22,0.96)_0%,rgba(43,38,31,0.95)_100%)] z-20 xl:z-10 shadow-[0_-14px_40px_rgba(12,10,8,0.35)] xl:shadow-[0_16px_34px_rgba(12,10,8,0.4)] border-t border-[#6f8069]/30 xl:border xl:border-[#6f8069]/28 xl:rounded-sm flex flex-col overflow-hidden transition-[height] duration-300',
+            'h-[78vh] xl:h-[min(680px,85vh)]'
+          )}
+        >
+          {stats && (
+            <div className="p-3 border-b border-[#6f8069]/26 bg-[linear-gradient(145deg,rgba(24,35,26,0.74),rgba(38,52,38,0.54))] grid grid-cols-2 gap-2 text-xs shrink-0">
+              <div className="flex items-center gap-2 text-[#dce6d4]/85 bg-[rgba(21,29,21,0.48)] px-2 py-1.5 rounded-sm border border-[#8bab84]/25">
+                <Hash size={12} className="text-[#b3cda0]" />
+                <span>{t('statsTotalWords')}: <strong className="ml-1">{stats.wordCount}</strong></span>
               </div>
-            )}
-
-            <div className="p-4 border-b border-cafe-leather/10 bg-gradient-to-b from-cafe-paper to-cafe-parchment/30 flex flex-col justify-between shrink-0 gap-3">
-              <div className="flex items-center justify-between">
-                <span className="font-subhead text-xs font-bold uppercase tracking-widest text-cafe-leather flex items-center gap-2">
-                  <div className="w-2 h-2 rounded-full bg-cafe-gold animate-pulse" />
-                  {t(direction)}
-                </span>
-                <div className="flex items-center gap-2 text-[10px] text-cafe-espresso/40 font-subhead font-medium tracking-wider bg-cafe-leather/5 px-2.5 py-1 rounded-sm border border-cafe-leather/5 uppercase">
-                  {t('symmetric')} <Bookmark size={10} />
+              <div className="flex items-center gap-2 text-[#dce6d4]/85 bg-[rgba(21,29,21,0.48)] px-2 py-1.5 rounded-sm border border-[#8bab84]/25">
+                <LayoutGrid size={12} className="text-[#b3cda0]" />
+                <span>{t('statsBlockPct')}: <strong className="ml-1">{stats.blockPercentage}%</strong></span>
+              </div>
+              <div className="flex items-center gap-2 text-[#dce6d4]/85 bg-[rgba(21,29,21,0.48)] px-2 py-1.5 rounded-sm border border-[#8bab84]/25 col-span-2 xl:col-span-1">
+                <CheckSquare size={12} className={stats.emptyClues > 0 ? 'text-[#f1cfbc]' : 'text-[#b3cda0]'} />
+                <span>{t('statsEmptyClues')}: <strong className="ml-1">{stats.emptyClues}</strong></span>
+              </div>
+              {!stats.isConnected && (
+                <div className="col-span-2 flex items-center gap-2 text-[#f1cfbc] bg-[#5c4237]/32 p-2 rounded-sm border border-[#91634c]/35">
+                  <AlertTriangle size={14} />
+                  <span>{t('connectedWarning')}</span>
                 </div>
-              </div>
-              <div className="mt-2 text-xl font-display font-bold text-cafe-leather leading-tight min-h-[1.75rem]">
-                {wordBounds ? `${wordBounds.length} ${direction === 'across' ? 'A' : 'D'}` : '-'}
-              </div>
+              )}
             </div>
-            
-            <div className="flex-1 overflow-y-auto p-0 flex scrollbar-hide">
-              {/* Two-column layout for clues: ACROSS | DOWN */}
-              <div className="grid grid-cols-2 gap-4 w-full">
-                {['across', 'down'].map((dir) => (
-                  <div key={dir} className="flex flex-col border border-cafe-leather/15 rounded-sm bg-cafe-paper">
-                    <div className="p-3 border-b border-cafe-leather/15 flex justify-between items-center bg-cafe-parchment/60 sticky top-0 z-10 rounded-t-sm">
-                      <h2 className="font-subhead text-sm font-bold uppercase tracking-widest text-cafe-leather flex items-center gap-2">
-                        {dir === 'across' ? <ArrowRight size={16}/> : <ArrowDown size={16}/>}
+          )}
+
+          <div className="xl:hidden px-3 pt-3 pb-2 border-b border-[#6f8069]/24 bg-[linear-gradient(145deg,rgba(28,39,30,0.84),rgba(39,54,40,0.64))] backdrop-blur-md">
+            <div className="relative grid grid-cols-2 rounded-sm border border-[#6f8069]/30 bg-[linear-gradient(145deg,rgba(13,20,14,0.38),rgba(41,56,40,0.34))] p-1">
+              <motion.div
+                initial={false}
+                animate={{ x: mobileCluePanel === 'across' ? '0%' : '100%' }}
+                transition={{ type: 'spring', stiffness: 240, damping: 28 }}
+                className="absolute top-1 bottom-1 left-1 w-[calc(50%-4px)] rounded-sm bg-[linear-gradient(140deg,rgba(98,122,95,0.58)_0%,rgba(65,82,61,0.28)_100%)] border border-[#8bab84]/40 shadow-[0_5px_16px_rgba(98,122,95,0.3)]"
+              />
+              {(['across', 'down'] as const).map((dir) => (
+                <button
+                  key={dir}
+                  type="button"
+                  onClick={() => {
+                    setMobileCluePanel(dir);
+                    setDirection(dir);
+                    triggerHaptic(10);
+                  }}
+                  className={clsx(
+                    'relative z-10 h-10 flex items-center justify-center gap-2 rounded-sm text-sm font-subhead font-bold tracking-[0.06em] transition-colors',
+                    mobileCluePanel === dir ? 'text-[#f3eee2]' : 'text-[#d9d0c0]/58'
+                  )}
+                >
+                  {dir === 'across' ? <ArrowRight size={14} /> : <ArrowDown size={14} />}
+                  {t(dir)}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          <div className="flex-1 overflow-hidden xl:grid xl:grid-cols-2 xl:gap-3 xl:p-3">
+            {(['across', 'down'] as const).map((dir) => {
+              const isMobileHidden = mobileCluePanel !== dir;
+              return (
+                <motion.section
+                  key={dir}
+                  initial={{ opacity: 0, y: 16 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ duration: 0.25, ease: 'easeOut' }}
+                  className={clsx(
+                    'relative flex flex-col h-full overflow-hidden',
+                    isMobileHidden ? 'hidden xl:flex' : 'flex',
+                    'xl:rounded-sm xl:border xl:border-[#c4b79f]/45 xl:bg-[linear-gradient(165deg,#fcf8ef_0%,#f7f2e8_100%)] xl:backdrop-blur-md'
+                  )}
+                >
+                  <div className="pointer-events-none absolute inset-x-0 top-0 h-16 bg-[radial-gradient(circle_at_18%_0%,rgba(169,198,154,0.26),transparent_68%)]" />
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setDirection(dir);
+                      setMobileCluePanel(dir);
+                      triggerHaptic(10);
+                    }}
+                    className={clsx(
+                      'px-4 py-3 border-b text-left transition-colors',
+                      dir === direction
+                        ? 'border-[#c3b598] bg-[linear-gradient(135deg,#f4ebdb_0%,#efe4cf_100%)]'
+                        : 'border-[#d7cbb7] bg-[linear-gradient(135deg,#faf4e8_0%,#f2e8d7_100%)] hover:bg-[linear-gradient(135deg,#f6ecdb_0%,#ecdfc8_100%)]'
+                    )}
+                  >
+                    <div className="flex items-center justify-between gap-3">
+                      <h2 className="font-display text-2xl leading-none text-[#1f2a36] tracking-tight flex items-center gap-2">
+                        {dir === 'across' ? <ArrowRight size={18} className="text-[#5a7b52]" /> : <ArrowDown size={18} className="text-[#5a7b52]" />}
                         {t(dir)}
                       </h2>
-                      <span className="text-xs font-mono text-cafe-espresso/50">{board.clues[dir as 'across'|'down'].length}</span>
+                      <span className="font-mono text-xs px-2 py-1 rounded-sm bg-[#edf3e4] text-[#3a5240] border border-[#c8d6b7]">
+                        {board.clues[dir].length}
+                      </span>
                     </div>
-                    <div className="p-3 space-y-2 overflow-y-auto max-h-[calc(100vh-22rem)]">
-                       {board.clues[dir as 'across' | 'down'].map(clue => {
-                         const clueBounds = getWordBounds(clue.x, clue.y, dir);
-                         const isActive = clueBounds && selectedCell && 
-                           selectedCell.x >= clueBounds.startX && selectedCell.x <= clueBounds.endX &&
-                           selectedCell.y >= clueBounds.startY && selectedCell.y <= clueBounds.endY;
-                         return (
-                           <div key={clue.number} className="flex flex-col">
-                             <div 
-                               className={clsx(
-                                 "flex gap-3 items-center text-base px-3 py-3 transition-all cursor-pointer rounded-md border",
-                                 isActive ? "bg-cafe-gold/15 border-cafe-gold/40 ring-2 ring-cafe-gold/30" : "hover:bg-cafe-parchment/60 border-cafe-leather/10"
-                               )}
-                               onClick={() => {
-                                 setSelectedCell({x: clue.x, y: clue.y});
-                                 setDirection(dir as 'across'|'down');
-                               }}
-                             >
-                               <div className="flex items-center min-w-[32px] shrink-0">
-                                 <span className="font-display font-bold text-lg text-cafe-leather">{clue.number}</span>
-                               </div>
-                               <input 
-                                 className="flex-1 bg-transparent font-body text-base outline-none placeholder:text-cafe-espresso/30 text-cafe-leather min-w-0"
-                                 placeholder={t('enterClue')}
-                                 value={clue.text}
-                                 onChange={e => updateClue(dir as 'across'|'down', clue.number, e.target.value)}
-                                 onClick={(e) => {
-                                   setSelectedCell({x: clue.x, y: clue.y});
-                                   setDirection(dir as 'across'|'down');
-                                   e.stopPropagation();
-                                 }}
-                                 onKeyDown={e => e.stopPropagation()}
-                               />
-                               <span className="text-xs font-mono text-cafe-espresso/40 shrink-0">{clue.length}</span>
-                             </div>
-                           </div>
-                         );
-                       })}
-                    </div>
+                  </button>
+
+                  <div className="flex-1 overflow-y-auto scroll-smooth px-1 py-1">
+                    {board.clues[dir].map((clue, index) => {
+                      const clueBounds = getWordBounds(clue.x, clue.y, dir);
+                      const isActive = clueBounds && selectedCell
+                        ? selectedCell.x >= clueBounds.startX && selectedCell.x <= clueBounds.endX && selectedCell.y >= clueBounds.startY && selectedCell.y <= clueBounds.endY && direction === dir
+                        : false;
+
+                      return (
+                        <motion.button
+                          key={`${dir}-${clue.number}`}
+                          type="button"
+                          initial={{ opacity: 0, x: -8 }}
+                          animate={{ opacity: 1, x: 0 }}
+                          transition={{ duration: 0.2, delay: Math.min(index * 0.012, 0.18) }}
+                          whileHover={{ x: 2, y: -1, scale: 1.002 }}
+                          whileTap={{ scale: 0.982 }}
+                          onClick={() => {
+                            setSelectedCell({ x: clue.x, y: clue.y });
+                            setDirection(dir);
+                            setMobileCluePanel(dir);
+                            playSound('cell-select');
+                            triggerHaptic(10);
+                          }}
+                          className={clsx(
+                            'relative w-full text-left grid grid-cols-[1fr_58px] gap-2.5 items-start px-3 py-3 rounded-sm transition-all border border-transparent',
+                            isActive
+                              ? 'bg-[linear-gradient(96deg,rgba(220,234,206,0.86)_0%,rgba(247,242,232,0.95)_56%,rgba(252,248,239,1)_100%)] border-[#9fb88f]/50 shadow-[0_10px_22px_rgba(62,88,58,0.24)]'
+                              : 'bg-[linear-gradient(96deg,#fcf8ef,#f8f3e7)] hover:bg-[linear-gradient(96deg,#f7f1e2,#f2e8d3)] hover:border-[#cdbd9e]/55 hover:shadow-[0_8px_18px_rgba(44,55,39,0.12)]'
+                          )}
+                        >
+                          <input
+                            className={clsx('bg-transparent font-body text-[18px] leading-relaxed outline-none min-w-0 text-right', isActive ? 'text-[#1f2a36]' : 'text-[#253241]')}
+                            style={{ textAlign: 'justify', textJustify: 'inter-word' }}
+                            placeholder={t('enterClue')}
+                            value={clue.text}
+                            onChange={e => updateClue(dir, clue.number, e.target.value)}
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setSelectedCell({ x: clue.x, y: clue.y });
+                              setDirection(dir);
+                              setMobileCluePanel(dir);
+                            }}
+                            onKeyDown={e => e.stopPropagation()}
+                          />
+                          <div className="flex flex-col items-end">
+                            <span className={clsx('font-display text-xl leading-none', isActive ? 'text-[#1f2a36]' : 'text-[#2f3d4f]/75')}>{clue.number}</span>
+                            <span className="text-xs font-mono text-[#3b5264]/55 mt-1">{clue.length}</span>
+                          </div>
+                        </motion.button>
+                      );
+                    })}
                   </div>
-                ))}
-              </div>
-            </div>
-          </motion.div>
+                </motion.section>
+              );
+            })}
+          </div>
         </div>
       </div>
     </div>
