@@ -62,6 +62,12 @@ const translations: Translations = {
     solverAutosaveSaved: "Saved",
     solverAutosaveError: "Save issue",
     solverProgress: "Progress",
+    makeTemplate: "Make template",
+    removeTemplate: "Remove template",
+    deleteCrossword: "Delete crossword",
+    deleteCrosswordConfirm: "Delete this crossword? This action cannot be undone.",
+    myTemplates: "My templates",
+    myTemplatesDesc: "Build from your saved template layouts",
   },
   ru: {
     appTitle: "Студия кроссвордов",
@@ -116,6 +122,12 @@ const translations: Translations = {
     solverAutosaveSaved: "Сохранено",
     solverAutosaveError: "Ошибка сохранения",
     solverProgress: "Прогресс",
+    makeTemplate: "Сделать шаблоном",
+    removeTemplate: "Убрать из шаблонов",
+    deleteCrossword: "Удалить кроссворд",
+    deleteCrosswordConfirm: "Удалить этот кроссворд? Действие нельзя отменить.",
+    myTemplates: "Мои шаблоны",
+    myTemplatesDesc: "Создавайте по своим сохраненным шаблонам",
   }
 };
 

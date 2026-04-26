@@ -7,6 +7,7 @@ export interface Crossword {
   createdAt: number;
   updatedAt: number;
   isPublished: boolean;
+  isTemplate?: boolean;
 }
 
 export interface CrosswordAnswers {
