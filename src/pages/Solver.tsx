@@ -380,24 +380,24 @@ export function Solver() {
 
   if (!board || !cw) {
     return (
-      <div className="flex-1 flex flex-col items-center justify-center bg-cafe-cream gap-4">
+      <div className="flex-1 flex flex-col items-center justify-center bg-[linear-gradient(180deg,#1f2c22_0%,#2a3b2d_100%)] gap-4">
         <motion.div
           animate={{ rotate: 360 }}
           transition={{ duration: 2, repeat: Infinity, ease: "linear" }}
-          className="w-12 h-12 border-2 border-cafe-leather/10 border-t-cafe-gold rounded-full"
+          className="w-12 h-12 border-2 border-[#9db897]/20 border-t-[#b8cf9d] rounded-full"
         />
-        <p className="font-subhead text-cafe-espresso/50 italic">{language === "ru" ? "Завариваем кроссворд..." : "Brewing your puzzle..."}</p>
+        <p className="font-subhead text-[#d8decb]/70 italic">{language === "ru" ? "Завариваем кроссворд..." : "Brewing your puzzle..."}</p>
       </div>
     );
   }
 
   return (
-    <div className="flex flex-col h-full bg-[radial-gradient(circle_at_18%_14%,rgba(121,151,122,0.2),transparent_34%),radial-gradient(circle_at_82%_86%,rgba(41,33,27,0.32),transparent_42%),linear-gradient(180deg,#191713_0%,#201c16_38%,#29231b_100%)] overflow-hidden relative" onKeyDown={handleKeyDown} tabIndex={0}>
+    <div className="flex flex-col h-full bg-[radial-gradient(circle_at_16%_14%,rgba(143,176,138,0.24),transparent_33%),radial-gradient(circle_at_84%_82%,rgba(63,86,62,0.28),transparent_40%),linear-gradient(180deg,#162118_0%,#223126_40%,#2f4333_100%)] overflow-hidden relative" onKeyDown={handleKeyDown} tabIndex={0}>
       {effectsEnabled && <FloatingParticles count={6} className="opacity-15 z-0" />}
       {effectsEnabled && <LampGlow className="opacity-35" intensity="soft" />}
       <div className="absolute inset-0 z-0 overflow-hidden pointer-events-none">
-        <div className="absolute top-[-15%] left-[-5%] w-[50%] h-[50%] bg-cafe-lamp/8 blur-[100px] rounded-full" />
-        <div className="absolute bottom-[-10%] right-[-8%] w-[45%] h-[45%] bg-cafe-wine/6 blur-[90px] rounded-full" />
+        <div className="absolute top-[-15%] left-[-5%] w-[50%] h-[50%] bg-[rgba(157,188,143,0.16)] blur-[100px] rounded-full" />
+        <div className="absolute bottom-[-10%] right-[-8%] w-[45%] h-[45%] bg-[rgba(84,112,80,0.2)] blur-[90px] rounded-full" />
       </div>
 
       <AnimatePresence>
@@ -474,26 +474,26 @@ export function Solver() {
         )}
       </AnimatePresence>
 
-      <div className="h-14 flex items-center justify-between px-4 sm:px-6 bg-[linear-gradient(90deg,rgba(23,26,22,0.88),rgba(35,31,26,0.84))] backdrop-blur-xl border-b border-[#5f6d58]/30 shrink-0 relative z-20">
+      <div className="h-14 flex items-center justify-between px-4 sm:px-6 bg-[linear-gradient(90deg,rgba(18,30,20,0.9),rgba(30,45,31,0.88))] backdrop-blur-xl border-b border-[#8bab84]/30 shrink-0 relative z-20">
         <div className="flex items-center gap-3 min-w-0">
           <motion.button
             whileTap={{ scale: 0.9 }}
             onClick={() => (window.location.href = "/")}
-            className="text-[#c9c2b7]/55 hover:text-[#f4efe4] transition-colors p-1.5 hover:bg-[#5f6d58]/20 rounded-sm"
+            className="text-[#c7d0bd]/55 hover:text-[#f0f4e9] transition-colors p-1.5 hover:bg-[#6d8968]/25 rounded-sm"
           >
             <ArrowLeft size={18} />
           </motion.button>
-          <div className="h-5 w-px bg-[#5f6d58]/35" />
-          <h1 className="text-lg font-display font-bold text-[#f1ebdf] truncate">{cw.title}</h1>
+          <div className="h-5 w-px bg-[#8bab84]/35" />
+          <h1 className="text-lg font-display font-bold text-[#edf2e3] truncate">{cw.title}</h1>
         </div>
 
         <div className="flex items-center gap-3">
-          <div className="hidden sm:flex items-center gap-2 text-[11px] font-mono text-[#e2dccf]/85 bg-[linear-gradient(120deg,rgba(84,99,80,0.3),rgba(45,41,34,0.55))] border border-[#6f8069]/40 px-2.5 py-1 rounded-sm shadow-[inset_0_1px_0_rgba(162,188,152,0.22)]">
+          <div className="hidden sm:flex items-center gap-2 text-[11px] font-mono text-[#dce6d4]/90 bg-[linear-gradient(120deg,rgba(78,104,76,0.45),rgba(28,40,28,0.68))] border border-[#8bab84]/40 px-2.5 py-1 rounded-sm shadow-[inset_0_1px_0_rgba(171,204,156,0.24)]">
             <span>{t("solverProgress")}</span>
             <span className="font-bold text-[#d3e2c1]">{progressPercent}%</span>
           </div>
 
-          <div className="flex items-center gap-1.5 font-mono text-sm font-bold text-[#f0eadf] bg-[linear-gradient(120deg,rgba(79,93,75,0.42),rgba(43,39,33,0.65))] px-2.5 py-1 rounded-sm border border-[#6f8069]/38 shadow-[inset_0_1px_0_rgba(157,189,143,0.18)]">
+          <div className="flex items-center gap-1.5 font-mono text-sm font-bold text-[#eff5e5] bg-[linear-gradient(120deg,rgba(79,109,75,0.5),rgba(24,35,24,0.72))] px-2.5 py-1 rounded-sm border border-[#8bab84]/36 shadow-[inset_0_1px_0_rgba(157,201,143,0.2)]">
             <ClockTick className="text-[#b3cda0]" />
             <span>{formatTime(timer)}</span>
           </div>
@@ -501,10 +501,10 @@ export function Solver() {
           <div
             className={clsx(
               "hidden md:flex items-center gap-1 text-[11px] px-2 py-1 rounded-sm border",
-              saveState === "saving" && "text-cafe-honey border-cafe-gold/25 bg-cafe-gold/10",
-              saveState === "saved" && "text-emerald-700 border-emerald-200 bg-emerald-50",
-              saveState === "error" && "text-cafe-wine border-cafe-wine/20 bg-cafe-wine/10",
-              saveState === "idle" && "text-cafe-espresso/55 border-cafe-leather/10 bg-cafe-paper/70"
+              saveState === "saving" && "text-[#d9e8c6] border-[#8bab84]/45 bg-[#5a7058]/40",
+              saveState === "saved" && "text-[#eaf2df] border-[#9ec39a]/40 bg-[#557053]/42",
+              saveState === "error" && "text-[#f1cfbc] border-[#91634c]/35 bg-[#5c4237]/38",
+              saveState === "idle" && "text-[#cfdbc7]/70 border-[#8bab84]/22 bg-[#223025]/55"
             )}
           >
             {saveState === "saved" && <Check size={12} />}
@@ -515,7 +515,7 @@ export function Solver() {
             <motion.button
               whileTap={{ scale: 0.95 }}
               onClick={login}
-              className="px-3 py-1.5 text-xs font-subhead font-semibold bg-cafe-leather text-cafe-paper rounded-sm hover:bg-cafe-espresso transition-all"
+              className="px-3 py-1.5 text-xs font-subhead font-semibold bg-[#334a35] text-[#eef3e7] rounded-sm hover:bg-[#48624a] transition-all border border-[#8bab84]/30"
             >
               {t("saveProgress")}
             </motion.button>
@@ -523,7 +523,7 @@ export function Solver() {
         </div>
       </div>
 
-      <div className="relative h-1.5 bg-cafe-leather/8 z-20">
+      <div className="relative h-1.5 bg-[#1a271b]/80 z-20">
         <motion.div
           initial={false}
           animate={{ width: `${progressPercent}%` }}
@@ -537,22 +537,22 @@ export function Solver() {
           <motion.div
             initial={{ opacity: 0, y: -10 }}
             animate={{ opacity: 1, y: 0 }}
-            className="xl:hidden w-full max-w-[600px] mb-3 flex items-stretch bg-cafe-paper rounded-sm border border-cafe-leather/10 shadow-md overflow-hidden"
+            className="xl:hidden w-full max-w-[600px] mb-3 flex items-stretch bg-[linear-gradient(145deg,rgba(31,46,31,0.84),rgba(25,34,24,0.88))] rounded-sm border border-[#8bab84]/26 shadow-md overflow-hidden"
           >
             <button
               onClick={() => navigateClue(-1)}
-              className="w-10 flex items-center justify-center text-cafe-espresso/30 hover:text-cafe-honey hover:bg-cafe-leather/5 transition-colors"
+              className="w-10 flex items-center justify-center text-[#dbe2d0]/38 hover:text-[#d3e2c1] hover:bg-[#597156]/26 transition-colors"
             >
               <ChevronLeft size={20} />
             </button>
             <div className="flex-1 px-3 py-2.5 flex items-center gap-2 cursor-pointer min-w-0" onClick={() => setDirection((d) => (d === "across" ? "down" : "across"))}>
-              <span className="font-display font-bold text-cafe-gold text-base shrink-0">{activeClueInfo?.number}</span>
-              <span className="font-body text-sm text-cafe-leather leading-tight truncate">{activeClueInfo?.text || "..."}</span>
-              <span className="text-cafe-espresso/30 shrink-0 ml-auto">{direction === "across" ? <ArrowRight size={14} /> : <ArrowDown size={14} />}</span>
+              <span className="font-display font-bold text-[#d3e2c1] text-base shrink-0">{activeClueInfo?.number}</span>
+              <span className="font-body text-sm text-[#efe9dd] leading-tight truncate">{activeClueInfo?.text || "..."}</span>
+              <span className="text-[#dbe2d0]/35 shrink-0 ml-auto">{direction === "across" ? <ArrowRight size={14} /> : <ArrowDown size={14} />}</span>
             </div>
             <button
               onClick={() => navigateClue(1)}
-              className="w-10 flex items-center justify-center text-cafe-espresso/30 hover:text-cafe-honey hover:bg-cafe-leather/5 transition-colors"
+              className="w-10 flex items-center justify-center text-[#dbe2d0]/38 hover:text-[#d3e2c1] hover:bg-[#597156]/26 transition-colors"
             >
               <ChevronRight size={20} />
             </button>
@@ -598,7 +598,7 @@ export function Solver() {
             initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.25 }}
-            className="hidden xl:flex w-full max-w-[680px] mt-5 items-stretch bg-[linear-gradient(145deg,rgba(43,39,33,0.72),rgba(61,54,45,0.62))] backdrop-blur-xl rounded-sm border border-[#6f8069]/32 shadow-xl overflow-hidden"
+            className="hidden xl:flex w-full max-w-[680px] mt-5 items-stretch bg-[linear-gradient(145deg,rgba(28,44,28,0.75),rgba(36,48,33,0.66))] backdrop-blur-xl rounded-sm border border-[#8bab84]/32 shadow-xl overflow-hidden"
           >
             <button onClick={() => navigateClue(-1)} className="w-14 flex items-center justify-center hover:bg-[#5f6d58]/20 transition-all text-[#dfd9cc]/40 hover:text-[#d3e2c1]">
               <ChevronLeft size={24} />
@@ -628,8 +628,8 @@ export function Solver() {
             <GripHorizontal size={18} />
           </button>
 
-          <div className="xl:hidden px-3 pt-3 pb-2 border-b border-[#6f8069]/24 bg-[linear-gradient(145deg,rgba(41,37,31,0.82),rgba(56,50,41,0.62))] backdrop-blur-md">
-            <div className="relative grid grid-cols-2 rounded-sm border border-[#6f8069]/30 bg-[linear-gradient(145deg,rgba(18,17,14,0.35),rgba(56,50,41,0.32))] p-1">
+          <div className="xl:hidden px-3 pt-3 pb-2 border-b border-[#6f8069]/24 bg-[linear-gradient(145deg,rgba(28,39,30,0.84),rgba(39,54,40,0.64))] backdrop-blur-md">
+            <div className="relative grid grid-cols-2 rounded-sm border border-[#6f8069]/30 bg-[linear-gradient(145deg,rgba(13,20,14,0.38),rgba(41,56,40,0.34))] p-1">
               <motion.div
                 initial={false}
                 animate={{ x: direction === "across" ? "0%" : "100%" }}
@@ -656,9 +656,9 @@ export function Solver() {
             </div>
           </div>
 
-          <div className="hidden xl:grid xl:grid-cols-2 gap-3 p-3 border-b border-[#6f8069]/22 bg-[linear-gradient(145deg,rgba(34,30,25,0.72),rgba(53,47,39,0.52))] backdrop-blur-md">
+          <div className="hidden xl:grid xl:grid-cols-2 gap-3 p-3 border-b border-[#6f8069]/22 bg-[linear-gradient(145deg,rgba(24,35,26,0.74),rgba(38,52,38,0.54))] backdrop-blur-md">
             {(["across", "down"] as const).map((dir) => {
-              const accent = dir === "across" ? "from-[#d8b06a]/45" : "from-[#6c8197]/35";
+              const accent = dir === "across" ? "from-[#9dbf8f]/35" : "from-[#6d8a66]/35";
               const active = direction === dir;
               return (
                 <button
@@ -672,7 +672,7 @@ export function Solver() {
                     "relative rounded-sm border px-4 py-2.5 text-left transition-all",
                     active
                       ? `border-[#8bab84]/45 bg-[linear-gradient(140deg,rgba(86,103,82,0.65)_0%,rgba(51,45,38,0.7)_100%)] shadow-[0_8px_20px_rgba(20,19,15,0.35)]`
-                      : `border-[#6f8069]/24 bg-[linear-gradient(140deg,rgba(44,39,33,0.75)_0%,rgba(56,50,41,0.65)_100%)] hover:border-[#8bab84]/35`
+                      : `border-[#6f8069]/24 bg-[linear-gradient(140deg,rgba(32,43,33,0.78)_0%,rgba(44,58,43,0.68)_100%)] hover:border-[#8bab84]/35`
                   )}
                 >
                   <span className={clsx("absolute inset-0 rounded-sm bg-gradient-to-r to-transparent opacity-35", accent)} />
@@ -690,7 +690,7 @@ export function Solver() {
 
           <div className="flex-1 overflow-hidden xl:grid xl:grid-cols-2 xl:gap-3 xl:p-3">
             {(["across", "down"] as const).map((dir) => {
-              const accentRail = dir === "across" ? "from-[#c79a4a]/70" : "from-[#617a93]/65";
+              const accentRail = dir === "across" ? "from-[#a8c39a]/75" : "from-[#7ea178]/70";
               return (
                 <motion.section
                   key={dir}
@@ -700,10 +700,10 @@ export function Solver() {
                   className={clsx(
                     "flex flex-col h-full overflow-hidden",
                     direction !== dir ? "hidden xl:flex" : "flex",
-                    "xl:rounded-sm xl:border xl:border-[#6f8069]/25 xl:bg-[linear-gradient(160deg,rgba(48,43,36,0.78),rgba(62,55,46,0.58))] xl:backdrop-blur-md"
+                    "xl:rounded-sm xl:border xl:border-[#6f8069]/25 xl:bg-[linear-gradient(160deg,rgba(31,43,33,0.8),rgba(44,58,42,0.6))] xl:backdrop-blur-md"
                   )}
                 >
-                  <div className="px-4 py-3 border-b border-[#6f8069]/24 bg-[linear-gradient(140deg,rgba(42,39,33,0.82)_0%,rgba(56,50,41,0.68)_100%)]">
+                  <div className="px-4 py-3 border-b border-[#6f8069]/24 bg-[linear-gradient(140deg,rgba(28,40,30,0.84)_0%,rgba(40,55,40,0.7)_100%)]">
                     <div className="flex items-center justify-between gap-3">
                       <h2 className="font-display text-xl leading-none text-[#f4efe4] tracking-tight flex items-center gap-2">
                         {dir === "across" ? <ArrowRight size={17} className="text-[#b3cda0]" /> : <ArrowDown size={17} className="text-[#b3cda0]" />}
@@ -744,7 +744,7 @@ export function Solver() {
                             "relative w-full text-left grid grid-cols-[42px_1fr] gap-2.5 items-start px-3 py-3 rounded-sm transition-all border border-transparent",
                             isActive
                               ? "bg-[linear-gradient(96deg,rgba(98,122,95,0.36)_0%,rgba(66,81,62,0.44)_45%,rgba(44,40,34,0.62)_100%)] border-[#8bab84]/38 shadow-[0_8px_20px_rgba(12,11,9,0.35)]"
-                              : "hover:bg-[linear-gradient(96deg,rgba(58,52,43,0.66),rgba(66,58,47,0.54))] hover:border-[#6f8069]/28"
+                              : "hover:bg-[linear-gradient(96deg,rgba(44,58,43,0.68),rgba(51,66,49,0.56))] hover:border-[#6f8069]/28"
                           )}
                         >
                           <span className={clsx("font-display text-lg leading-none pt-0.5 text-right", isActive ? "text-[#d3e2c1]" : "text-[#cabfae]/72")}>{clue.number}</span>
