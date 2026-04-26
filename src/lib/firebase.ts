@@ -49,9 +49,10 @@ export function handleFirestoreError(error: any, operationType: FirestoreErrorIn
         providerInfo: []
       }
     };
-    throw new Error(JSON.stringify(errorInfo, null, 2));
+    console.error(JSON.stringify(errorInfo, null, 2));
+    return;
   }
-  throw error;
+  console.error(error);
 }
 
 // Check connection
