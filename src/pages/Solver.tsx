@@ -26,6 +26,7 @@ import { CanvasGrid } from "../components/CanvasGrid";
 import { hashString } from "../lib/crypto";
 
 type SaveState = "idle" | "saving" | "saved" | "error";
+type InkPulse = { x: number; y: number; key: number } | null;
 
 export function Solver() {
   const { id } = useParams();
@@ -44,8 +45,10 @@ export function Solver() {
   const [hasStarted, setHasStarted] = useState(false);
   const [sheetExpanded, setSheetExpanded] = useState(false);
   const [saveState, setSaveState] = useState<SaveState>("idle");
-  const clueRefs = useRef<Record<string, HTMLDivElement | null>>({});
+  const [inkPulse, setInkPulse] = useState<InkPulse>(null);
+  const clueRefs = useRef<Record<string, HTMLButtonElement | null>>({});
   const saveStateTimerRef = useRef<number | null>(null);
+  const inkPulseTimerRef = useRef<number | null>(null);
 
   const totalCells = board ? board.grid.filter((c) => !c.isBlock && !c.isHidden).length : 0;
   const totalWords = board ? board.clues.across.length + board.clues.down.length : 0;
@@ -56,7 +59,25 @@ export function Solver() {
       if (saveStateTimerRef.current) {
         window.clearTimeout(saveStateTimerRef.current);
       }
+      if (inkPulseTimerRef.current) {
+        window.clearTimeout(inkPulseTimerRef.current);
+      }
     };
+  }, []);
+
+  const triggerHaptic = useCallback((pattern: number | number[]) => {
+    if (typeof navigator === "undefined" || typeof navigator.vibrate !== "function") return;
+    navigator.vibrate(pattern);
+  }, []);
+
+  const triggerInkPulse = useCallback((x: number, y: number) => {
+    setInkPulse({ x, y, key: Date.now() });
+    if (inkPulseTimerRef.current) {
+      window.clearTimeout(inkPulseTimerRef.current);
+    }
+    inkPulseTimerRef.current = window.setTimeout(() => {
+      setInkPulse(null);
+    }, 380);
   }, []);
 
   useEffect(() => {
@@ -144,11 +165,12 @@ export function Solver() {
       if (userHash === savedHash && !isCompleted) {
         setIsCompleted(true);
         playSound("success");
+        triggerHaptic([30, 30, 45]);
       }
     } catch (error) {
       console.error("Verification failed:", error);
     }
-  }, [answers, board, hasStarted, hashUserAnswers, id, isCompleted, playSound, user]);
+  }, [answers, board, hasStarted, hashUserAnswers, id, isCompleted, playSound, triggerHaptic, user]);
 
   useEffect(() => {
     const timeoutId = setTimeout(() => {
@@ -191,7 +213,13 @@ export function Solver() {
   const setAnswer = (x: number, y: number, letter: string) => {
     if (isCompleted || !hasStarted) return;
     setAnswers((prev) => ({ ...prev, [`${x},${y}`]: letter }));
-    if (letter) playSound("letter-input");
+    if (letter) {
+      playSound("letter-input");
+      triggerHaptic(8);
+      triggerInkPulse(x, y);
+      return;
+    }
+    triggerHaptic(5);
   };
 
   const activeClueInfo = React.useMemo(() => {
@@ -256,6 +284,7 @@ export function Solver() {
     if (!next) return;
     setSelectedCell({ x: next.x, y: next.y });
     playSound("cell-select");
+    triggerHaptic(8);
   };
 
   const formatTime = (s: number) => `${Math.floor(s / 60)}:${(s % 60).toString().padStart(2, "0")}`;
@@ -311,7 +340,10 @@ export function Solver() {
       if (e.key === "ArrowLeft") x = Math.max(0, x - 1);
       if (e.key === "ArrowRight") x = Math.min(board.width - 1, x + 1);
       const c = getCell(x, y);
-      if (c && !c.isBlock && !c.isHidden) setSelectedCell({ x, y });
+      if (c && !c.isBlock && !c.isHidden) {
+        setSelectedCell({ x, y });
+        triggerHaptic(6);
+      }
     }
   };
 
@@ -319,15 +351,18 @@ export function Solver() {
     if (!hasStarted) return;
     if (selectedCell?.x === x && selectedCell?.y === y) {
       setDirection((d) => (d === "across" ? "down" : "across"));
+      triggerHaptic(10);
     } else {
       setSelectedCell({ x, y });
       playSound("cell-select");
+      triggerHaptic(8);
     }
   };
 
   const startSession = () => {
     setHasStarted(true);
     playSound(hasSavedProgress ? "page-turn" : "book-open");
+    triggerHaptic([12, 20, 12]);
   };
 
   const saveStatusLabel =
@@ -353,7 +388,7 @@ export function Solver() {
   }
 
   return (
-    <div className="flex flex-col h-full bg-cafe-cream overflow-hidden relative" onKeyDown={handleKeyDown} tabIndex={0}>
+    <div className="flex flex-col h-full bg-[radial-gradient(circle_at_12%_8%,rgba(232,201,122,0.14),transparent_42%),radial-gradient(circle_at_88%_84%,rgba(139,58,74,0.13),transparent_38%),linear-gradient(180deg,#faf7f0_0%,#f0e6d6_100%)] overflow-hidden relative" onKeyDown={handleKeyDown} tabIndex={0}>
       {effectsEnabled && <FloatingParticles count={6} className="opacity-15 z-0" />}
       {effectsEnabled && <LampGlow className="opacity-35" intensity="soft" />}
       <div className="absolute inset-0 z-0 overflow-hidden pointer-events-none">
@@ -435,7 +470,7 @@ export function Solver() {
         )}
       </AnimatePresence>
 
-      <div className="h-14 flex items-center justify-between px-4 sm:px-6 bg-cafe-paper/80 backdrop-blur-xl border-b border-cafe-leather/8 shrink-0 relative z-20">
+      <div className="h-14 flex items-center justify-between px-4 sm:px-6 bg-cafe-paper/75 backdrop-blur-xl border-b border-cafe-leather/10 shrink-0 relative z-20">
         <div className="flex items-center gap-3 min-w-0">
           <motion.button
             whileTap={{ scale: 0.9 }}
@@ -449,12 +484,12 @@ export function Solver() {
         </div>
 
         <div className="flex items-center gap-3">
-          <div className="hidden sm:flex items-center gap-2 text-[11px] font-mono text-cafe-espresso/55 bg-cafe-paper/80 border border-cafe-leather/8 px-2.5 py-1 rounded-sm">
+          <div className="hidden sm:flex items-center gap-2 text-[11px] font-mono text-cafe-espresso/60 bg-gradient-to-r from-cafe-paper to-cafe-parchment/55 border border-cafe-leather/10 px-2.5 py-1 rounded-sm shadow-[inset_0_1px_0_rgba(255,255,255,0.55)]">
             <span>{t("solverProgress")}</span>
             <span className="font-bold text-cafe-leather">{progressPercent}%</span>
           </div>
 
-          <div className="flex items-center gap-1.5 font-mono text-sm font-bold text-cafe-leather bg-cafe-parchment/40 px-2.5 py-1 rounded-sm border border-cafe-leather/8">
+          <div className="flex items-center gap-1.5 font-mono text-sm font-bold text-cafe-leather bg-gradient-to-r from-cafe-parchment/70 to-cafe-paper px-2.5 py-1 rounded-sm border border-cafe-leather/10 shadow-[inset_0_1px_0_rgba(255,255,255,0.55)]">
             <ClockTick className="text-cafe-gold" />
             <span>{formatTime(timer)}</span>
           </div>
@@ -484,6 +519,15 @@ export function Solver() {
         </div>
       </div>
 
+      <div className="relative h-1.5 bg-cafe-leather/8 z-20">
+        <motion.div
+          initial={false}
+          animate={{ width: `${progressPercent}%` }}
+          transition={{ duration: 0.32, ease: "easeOut" }}
+          className="h-full bg-[linear-gradient(90deg,#d6aa5f_0%,#ebcf9a_48%,#bf8c3c_100%)] shadow-[0_0_14px_rgba(214,170,95,0.45)]"
+        />
+      </div>
+
       <div className={clsx("flex-1 overflow-hidden flex flex-col xl:flex-row p-0 sm:p-4 md:p-6 gap-4 xl:gap-6 max-w-[1700px] mx-auto w-full relative z-10 xl:items-start", !hasStarted && "blur-[1px]") }>
         <div className="flex-1 flex flex-col items-center justify-start overflow-y-auto overflow-x-hidden p-3 pb-[22rem] xl:pb-4 max-h-[85vh] xl:sticky xl:top-4">
           <motion.div
@@ -510,7 +554,12 @@ export function Solver() {
             </button>
           </motion.div>
 
-          <div className="w-full max-w-[680px]" style={{ aspectRatio: "1/1" }}>
+          <motion.div
+            whileTap={{ scale: 0.998 }}
+            transition={{ duration: 0.12 }}
+            className="relative w-full max-w-[680px] rounded-sm border border-cafe-leather/15 p-2 bg-[linear-gradient(165deg,rgba(255,255,255,0.92)_0%,rgba(248,238,224,0.74)_100%)] shadow-[0_20px_50px_rgba(35,24,16,0.17)]"
+            style={{ aspectRatio: "1/1" }}
+          >
             <CanvasGrid
               board={board}
               selectedCell={selectedCell}
@@ -520,13 +569,32 @@ export function Solver() {
               answers={answers}
               isCompleted={isCompleted}
             />
-          </div>
+            <AnimatePresence>
+              {inkPulse && (
+                <motion.span
+                  key={inkPulse.key}
+                  initial={{ opacity: 0.5, scale: 0.1 }}
+                  animate={{ opacity: 0, scale: 2.2 }}
+                  exit={{ opacity: 0 }}
+                  transition={{ duration: 0.38, ease: "easeOut" }}
+                  className="pointer-events-none absolute block rounded-full bg-cafe-gold/45"
+                  style={{
+                    width: `${100 / board.width}%`,
+                    height: `${100 / board.height}%`,
+                    left: `${(inkPulse.x * 100) / board.width}%`,
+                    top: `${(inkPulse.y * 100) / board.height}%`,
+                    transformOrigin: "50% 50%",
+                  }}
+                />
+              )}
+            </AnimatePresence>
+          </motion.div>
 
           <motion.div
             initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.25 }}
-            className="hidden xl:flex w-full max-w-[680px] mt-5 items-stretch bg-cafe-paper/80 backdrop-blur-xl rounded-sm border border-cafe-leather/8 shadow-lg overflow-hidden"
+            className="hidden xl:flex w-full max-w-[680px] mt-5 items-stretch bg-[linear-gradient(145deg,rgba(255,255,255,0.82),rgba(244,236,224,0.72))] backdrop-blur-xl rounded-sm border border-cafe-leather/12 shadow-xl overflow-hidden"
           >
             <button onClick={() => navigateClue(-1)} className="w-14 flex items-center justify-center hover:bg-cafe-leather/5 transition-all text-cafe-espresso/30 hover:text-cafe-honey">
               <ChevronLeft size={24} />
@@ -571,25 +639,31 @@ export function Solver() {
                   const isActive = activeClueInfo?.number === clue.number && direction === dir;
                   const refKey = `${dir}-${clue.number}`;
                   return (
-                    <div
+                    <motion.button
                       key={clue.number}
+                      type="button"
                       ref={(el) => {
                         clueRefs.current[refKey] = el;
                       }}
+                      whileTap={{ scale: 0.985 }}
                       onClick={() => {
                         if (!hasStarted) return;
                         setSelectedCell({ x: clue.x, y: clue.y });
                         setDirection(dir);
                         playSound("cell-select");
+                        triggerHaptic(10);
                       }}
                       className={clsx(
-                        "flex gap-2.5 px-4 py-2.5 cursor-pointer transition-all duration-150 border-l-[3px]",
-                        isActive ? "bg-cafe-gold/15 border-l-cafe-gold text-cafe-leather" : "border-l-transparent hover:bg-cafe-parchment/50 text-cafe-leather/85"
+                        "w-full text-left flex gap-2.5 px-4 py-2.5 cursor-pointer transition-all duration-150 border-l-[3px] relative",
+                        isActive
+                          ? "bg-[linear-gradient(90deg,rgba(232,201,122,0.35)_0%,rgba(232,201,122,0.15)_60%,transparent_100%)] border-l-cafe-gold text-cafe-leather"
+                          : "border-l-transparent hover:bg-cafe-parchment/60 text-cafe-leather/85"
                       )}
                     >
                       <span className={clsx("font-display font-bold text-sm min-w-[22px] text-right shrink-0", isActive ? "text-cafe-gold" : "text-cafe-leather/60")}>{clue.number}</span>
                       <span className="font-body text-[13.5px] leading-relaxed text-cafe-espresso">{clue.text || <span className="text-cafe-espresso/35 italic">{t("noClue")}</span>}</span>
-                    </div>
+                      {isActive && <span className="pointer-events-none absolute inset-y-0 right-2 w-10 bg-gradient-to-l from-cafe-gold/20 to-transparent" />}
+                    </motion.button>
                   );
                 })}
               </div>

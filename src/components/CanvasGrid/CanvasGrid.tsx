@@ -88,6 +88,7 @@ export function CanvasGrid({
       initial={{ opacity: 0, scale: 0.95 }}
       animate={{ opacity: 1, scale: 1 }}
       transition={{ duration: 0.3 }}
+      whileTap={{ scale: 0.997 }}
       className="relative w-full aspect-square"
     >
       <canvas
@@ -99,7 +100,7 @@ export function CanvasGrid({
         aria-label="Crossword puzzle grid"
         aria-roledescription="crossword grid"
         tabIndex={0}
-        className="w-full h-full cursor-pointer rounded-sm shadow-lg outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2"
+        className="w-full h-full cursor-pointer rounded-sm shadow-[0_12px_30px_rgba(30,42,53,0.18)] outline-none focus-visible:ring-2 focus-visible:ring-cafe-gold focus-visible:ring-offset-2"
         style={{ touchAction: 'none' }}
       />
 
