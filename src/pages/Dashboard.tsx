@@ -70,6 +70,7 @@ export function Dashboard() {
   const navigate = useNavigate();
   const [crosswords, setCrosswords] = useState<Crossword[]>([]);
   const [loading, setLoading] = useState(true);
+  const [creating, setCreating] = useState(false);
 
   useEffect(() => {
     async function fetchPuzzles() {
@@ -93,9 +94,28 @@ export function Dashboard() {
     fetchPuzzles();
   }, [user]);
 
+  const toCrosswordPayload = (data: Omit<Crossword, 'id'>): Omit<Crossword, 'id'> => {
+    const plainBoard = JSON.parse(JSON.stringify(data.boardState)) as BoardState;
+    return {
+      authorId: data.authorId,
+      title: data.title,
+      boardState: plainBoard,
+      answersHash: data.answersHash,
+      createdAt: data.createdAt,
+      updatedAt: data.updatedAt,
+      isPublished: data.isPublished,
+    };
+  };
+
+  const createCrossword = async (id: string, payload: Omit<Crossword, 'id'>) => {
+    const ref = doc(db, 'crosswords', id);
+    await setDoc(ref, toCrosswordPayload(payload));
+  };
+
   /* ── creators ── */
   const handleCreateFromTemplate = async (template: Template) => {
-    if (!user) return;
+    if (!user || creating) return;
+    setCreating(true);
     playSound('page-turn');
     const newId = crypto.randomUUID();
     const grid = [];
@@ -110,19 +130,34 @@ export function Dashboard() {
     boardState = updateGridNumbers(boardState);
     const answersHash = computeAnswersHash(boardState);
     const newPw: Crossword = { authorId: user.uid, title: language === 'ru' ? template.nameRu : template.name, boardState, answersHash, createdAt: Date.now(), updatedAt: Date.now(), isPublished: false };
-    try { await setDoc(doc(db, 'crosswords', newId), newPw); navigate(`/editor/${newId}`); }
-    catch (err) { handleFirestoreError(err, 'create', `/crosswords/${newId}`); }
+    try {
+      await createCrossword(newId, newPw);
+      navigate(`/editor/${newId}`);
+    } catch (err) {
+      handleFirestoreError(err, 'create', `/crosswords/${newId}`);
+      alert(language === 'ru' ? 'Не удалось создать кроссворд. Проверьте правила Firestore для коллекции crosswords.' : 'Failed to create crossword. Check Firestore rules for crosswords collection.');
+    } finally {
+      setCreating(false);
+    }
   };
 
   const handleCreate = async () => {
-    if (!user) return;
+    if (!user || creating) return;
+    setCreating(true);
     playSound('book-open');
     const newId = crypto.randomUUID();
     const boardState = createEmptyGrid(15, 15);
     const answersHash = computeAnswersHash(boardState);
     const newPw: Crossword = { authorId: user.uid, title: 'Untitled Crossword', boardState, answersHash, createdAt: Date.now(), updatedAt: Date.now(), isPublished: false };
-    try { await setDoc(doc(db, 'crosswords', newId), newPw); navigate(`/editor/${newId}`); }
-    catch (err) { handleFirestoreError(err, 'create', `/crosswords/${newId}`); }
+    try {
+      await createCrossword(newId, newPw);
+      navigate(`/editor/${newId}`);
+    } catch (err) {
+      handleFirestoreError(err, 'create', `/crosswords/${newId}`);
+      alert(language === 'ru' ? 'Не удалось создать кроссворд. Проверьте правила Firestore для коллекции crosswords.' : 'Failed to create crossword. Check Firestore rules for crosswords collection.');
+    } finally {
+      setCreating(false);
+    }
   };
 
   /* ════════════════════════════════════════════════════════════
@@ -130,7 +165,7 @@ export function Dashboard() {
      ════════════════════════════════════════════════════════════ */
   if (!user) {
     return (
-      <div className="flex-1 flex flex-col items-center justify-center p-4 relative overflow-hidden">
+      <div className="flex-1 flex flex-col items-center justify-center p-4 relative overflow-hidden bg-[radial-gradient(circle_at_16%_14%,rgba(143,176,138,0.22),transparent_33%),radial-gradient(circle_at_84%_82%,rgba(63,86,62,0.24),transparent_40%),linear-gradient(180deg,#162118_0%,#223126_40%,#2f4333_100%)]">
         {effectsEnabled && (
           <>
             <LampGlow className="absolute inset-0 opacity-40" intensity="soft" />
@@ -151,7 +186,7 @@ export function Dashboard() {
           initial={{ opacity: 0, y: 30 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.6 }}
-          className="max-w-lg w-full bg-cafe-paper rounded-sm shadow-2xl shadow-cafe-leather/20 border border-cafe-leather/10 relative overflow-hidden"
+          className="max-w-lg w-full bg-[linear-gradient(165deg,#f4eddf_0%,#ece3d2_100%)] rounded-sm shadow-2xl shadow-black/35 border border-[#c4b79f]/45 relative overflow-hidden"
         >
           {/* золотая полоса сверху */}
           <div className="h-1 bg-gradient-to-r from-transparent via-cafe-gold/60 to-transparent" />
@@ -213,14 +248,14 @@ export function Dashboard() {
      MAIN DASHBOARD — авторизован
      ════════════════════════════════════════════════════════════ */
   return (
-    <div className="max-w-6xl w-full mx-auto px-4 sm:px-6 py-6 h-full overflow-auto relative">
+      <div className="max-w-6xl w-full mx-auto px-4 sm:px-6 py-6 h-full overflow-auto relative bg-[radial-gradient(circle_at_16%_14%,rgba(143,176,138,0.24),transparent_33%),radial-gradient(circle_at_84%_82%,rgba(63,86,62,0.28),transparent_40%),linear-gradient(180deg,#162118_0%,#223126_40%,#2f4333_100%)] rounded-sm">
       {effectsEnabled && <FloatingParticles count={4} className="opacity-10" />}
 
       {/* ═══ HERO ═══ */}
       <motion.section
         initial={{ opacity: 0, y: 15 }}
         animate={{ opacity: 1, y: 0 }}
-        className="mb-10 relative overflow-hidden rounded-sm bg-cafe-leather text-cafe-paper p-8 sm:p-10 shadow-xl"
+        className="mb-10 relative overflow-hidden rounded-sm bg-[linear-gradient(145deg,rgba(28,44,28,0.9),rgba(36,48,33,0.78))] text-[#f0f4e9] p-8 sm:p-10 shadow-xl border border-[#8bab84]/28"
       >
         <PageCurl className="absolute top-0 right-0 w-16 h-16" />
         {/* фон — сетка кроссворда */}
@@ -255,10 +290,11 @@ export function Dashboard() {
             whileHover={{ scale: 1.03, y: -2 }}
             whileTap={{ scale: 0.97 }}
             onClick={handleCreate}
-            className="flex items-center justify-center gap-3 px-7 py-4 bg-cafe-gold text-cafe-leather font-subhead text-lg font-bold rounded-sm shadow-lg hover:shadow-xl hover:bg-cafe-lamp transition-all shrink-0"
+            className="flex items-center justify-center gap-3 px-7 py-4 bg-[linear-gradient(120deg,rgba(79,109,75,0.72),rgba(24,35,24,0.82))] text-[#eef5e4] font-subhead text-lg font-bold rounded-sm shadow-lg hover:shadow-xl border border-[#8bab84]/36 transition-all shrink-0 disabled:opacity-60 disabled:cursor-not-allowed"
+            disabled={creating}
           >
             <Feather size={22} />
-            <span>{t('newCrossword')}</span>
+            <span>{creating ? (language === 'ru' ? 'Создаем...' : 'Creating...') : t('newCrossword')}</span>
           </motion.button>
         </div>
 
@@ -291,10 +327,10 @@ export function Dashboard() {
                   {language === 'ru' ? 'Меню' : 'Menu'}
                 </span>
               </div>
-              <h2 className="font-display text-2xl font-bold text-cafe-leather">{t('templates')}</h2>
+              <h2 className="font-display text-2xl font-bold text-[#edf2e3]">{t('templates')}</h2>
             </div>
           </div>
-          <p className="font-body text-sm text-cafe-espresso/50 hidden sm:block">{t('templatesDesc')}</p>
+          <p className="font-body text-sm text-[#d3dbc8]/70 hidden sm:block">{t('templatesDesc')}</p>
         </div>
 
         <motion.div
@@ -310,7 +346,7 @@ export function Dashboard() {
               variants={{ hidden: { opacity: 0, y: 12 }, visible: { opacity: 1, y: 0 } }}
               whileHover={{ y: -6, scale: 1.03 }}
               whileTap={{ scale: 0.97 }}
-              className="bg-cafe-paper group rounded-sm p-4 shadow-md hover:shadow-xl hover:shadow-cafe-gold/10 transition-all duration-300 border border-cafe-leather/8 flex flex-col items-center text-center relative overflow-hidden"
+              className="bg-[linear-gradient(165deg,#f4eddf_0%,#ece3d2_100%)] group rounded-sm p-4 shadow-md hover:shadow-xl hover:shadow-black/20 transition-all duration-300 border border-[#c4b79f]/45 flex flex-col items-center text-center relative overflow-hidden"
             >
               {/* hover-лампа */}
               <div className="absolute inset-0 bg-gradient-to-b from-cafe-gold/0 to-cafe-gold/5 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none" />
@@ -319,10 +355,10 @@ export function Dashboard() {
                 <MiniGrid tpl={tpl} />
               </div>
 
-              <h3 className="font-display text-sm font-semibold text-cafe-leather group-hover:text-cafe-honey transition-colors leading-tight">
+               <h3 className="font-display text-sm font-semibold text-[#1f2a36] group-hover:text-[#5a7b52] transition-colors leading-tight">
                 {language === 'ru' ? tpl.nameRu : tpl.name}
               </h3>
-              <span className="font-mono text-[10px] text-cafe-espresso/40 mt-1">{tpl.width}×{tpl.height}</span>
+              <span className="font-mono text-[10px] text-[#3b5264]/55 mt-1">{tpl.width}×{tpl.height}</span>
             </motion.button>
           ))}
         </motion.div>
@@ -340,7 +376,7 @@ export function Dashboard() {
                   {language === 'ru' ? 'Полка' : 'Shelf'}
                 </span>
               </div>
-              <h2 className="font-display text-2xl font-bold text-cafe-leather">{t('dashboard')}</h2>
+              <h2 className="font-display text-2xl font-bold text-[#edf2e3]">{t('dashboard')}</h2>
             </div>
           </div>
         </div>
