@@ -507,7 +507,7 @@ export function Editor() {
 
         <div
           className={clsx(
-            'w-full xl:w-[760px] shrink-0 xl:h-[min(680px,85vh)] fixed bottom-0 left-0 right-0 xl:static bg-[linear-gradient(165deg,rgba(29,26,22,0.96)_0%,rgba(43,38,31,0.95)_100%)] z-20 xl:z-10 shadow-[0_-14px_40px_rgba(12,10,8,0.35)] xl:shadow-[0_16px_34px_rgba(12,10,8,0.4)] border-t border-[#6f8069]/30 xl:border xl:border-[#6f8069]/28 xl:rounded-sm flex flex-col overflow-hidden transition-[height] duration-300',
+            'w-full xl:w-[760px] shrink-0 xl:h-[min(680px,85vh)] fixed bottom-0 left-0 right-0 xl:static bg-[linear-gradient(165deg,rgba(29,26,22,0.96)_0%,rgba(43,38,31,0.95)_100%)] z-20 xl:z-10 shadow-[0_-14px_40px_rgba(12,10,8,0.35)] xl:shadow-[0_16px_34px_rgba(12,10,8,0.4)] border-t border-[#6f8069]/30 xl:border xl:border-[#6f8069]/28 xl:rounded-sm flex flex-col overflow-hidden transition-[height] duration-300 pb-[env(safe-area-inset-bottom)]',
             'h-[78vh] xl:h-[min(680px,85vh)]'
           )}
         >
@@ -575,7 +575,7 @@ export function Editor() {
                   className={clsx(
                     'relative flex flex-col h-full overflow-hidden',
                     isMobileHidden ? 'hidden xl:flex' : 'flex',
-                    'xl:rounded-sm xl:border xl:border-[#c4b79f]/45 xl:bg-[linear-gradient(165deg,#fcf8ef_0%,#f7f2e8_100%)] xl:backdrop-blur-md'
+                    'xl:rounded-sm xl:border xl:border-[#c4b79f]/45 xl:bg-[linear-gradient(165deg,#f4eddf_0%,#ece3d2_100%)] xl:backdrop-blur-md'
                   )}
                 >
                   <div className="pointer-events-none absolute inset-x-0 top-0 h-16 bg-[radial-gradient(circle_at_18%_0%,rgba(169,198,154,0.26),transparent_68%)]" />
@@ -590,7 +590,7 @@ export function Editor() {
                       'px-4 py-3 border-b text-left transition-colors',
                       dir === direction
                         ? 'border-[#c3b598] bg-[linear-gradient(135deg,#f4ebdb_0%,#efe4cf_100%)]'
-                        : 'border-[#d7cbb7] bg-[linear-gradient(135deg,#faf4e8_0%,#f2e8d7_100%)] hover:bg-[linear-gradient(135deg,#f6ecdb_0%,#ecdfc8_100%)]'
+                        : 'border-[#d7cbb7] bg-[linear-gradient(135deg,#f2e9d8_0%,#eadfca_100%)] hover:bg-[linear-gradient(135deg,#efe3cf_0%,#e5d7bf_100%)]'
                     )}
                   >
                     <div className="flex items-center justify-between gap-3">
@@ -631,7 +631,7 @@ export function Editor() {
                             'relative w-full text-left grid grid-cols-[1fr_58px] gap-2.5 items-start px-3 py-3 rounded-sm transition-all border border-transparent',
                             isActive
                               ? 'bg-[linear-gradient(96deg,rgba(220,234,206,0.86)_0%,rgba(247,242,232,0.95)_56%,rgba(252,248,239,1)_100%)] border-[#9fb88f]/50 shadow-[0_10px_22px_rgba(62,88,58,0.24)]'
-                              : 'bg-[linear-gradient(96deg,#fcf8ef,#f8f3e7)] hover:bg-[linear-gradient(96deg,#f7f1e2,#f2e8d3)] hover:border-[#cdbd9e]/55 hover:shadow-[0_8px_18px_rgba(44,55,39,0.12)]'
+                              : 'bg-[linear-gradient(96deg,#f4eddf,#ece2d1)] hover:bg-[linear-gradient(96deg,#efe5d3,#e7dbc5)] hover:border-[#cdbd9e]/55 hover:shadow-[0_8px_18px_rgba(44,55,39,0.12)]'
                           )}
                         >
                           <input
@@ -662,6 +662,7 @@ export function Editor() {
           </div>
         </div>
       </div>
+      <div className="pointer-events-none absolute inset-x-0 bottom-0 h-14 bg-[linear-gradient(180deg,transparent_0%,rgba(17,24,18,0.62)_100%)] xl:hidden" />
     </div>
   );
 }
