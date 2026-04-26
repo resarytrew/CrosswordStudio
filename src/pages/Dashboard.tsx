@@ -1,12 +1,12 @@
 import React, { useEffect, useState } from 'react';
 import { motion } from 'framer-motion';
-import { BookMarked, BookOpen, Clock, Coffee, Feather, Grid3X3, PenTool, Play, Plus, Sparkles } from 'lucide-react';
+import { BookMarked, BookOpen, Clock, Coffee, Feather, Grid3X3, PenTool, Play, Plus, Sparkles, Trash2, Bookmark } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { useLanguage } from '../contexts/LanguageContext';
 import { useCafe } from '../contexts/CafeContext';
 import { useNavigate } from 'react-router-dom';
 import { db, handleFirestoreError } from '../lib/firebase';
-import { collection, query, where, getDocs, setDoc, doc, orderBy, limit } from 'firebase/firestore';
+import { collection, query, where, getDocs, setDoc, doc, orderBy, limit, deleteDoc, updateDoc } from 'firebase/firestore';
 import { Crossword, BoardState } from '../types';
 import { createEmptyGrid, updateGridNumbers } from '../lib/gridUtils';
 import { computeAnswersHash } from '../lib/crypto';
@@ -94,7 +94,7 @@ export function Dashboard() {
     fetchPuzzles();
   }, [user]);
 
-  const toCrosswordPayload = (data: Omit<Crossword, 'id'>): Omit<Crossword, 'id'> => {
+const toCrosswordPayload = (data: Omit<Crossword, 'id'>): Omit<Crossword, 'id'> => {
     const plainBoard = JSON.parse(JSON.stringify(data.boardState)) as BoardState;
     return {
       authorId: data.authorId,
@@ -104,6 +104,7 @@ export function Dashboard() {
       createdAt: data.createdAt,
       updatedAt: data.updatedAt,
       isPublished: data.isPublished,
+      isTemplate: data.isTemplate,
     };
   };
 
@@ -141,7 +142,7 @@ export function Dashboard() {
     }
   };
 
-  const handleCreate = async () => {
+const handleCreate = async () => {
     if (!user || creating) return;
     setCreating(true);
     playSound('book-open');
@@ -157,6 +158,31 @@ export function Dashboard() {
       alert(language === 'ru' ? 'Не удалось создать кроссворд. Проверьте правила Firestore для коллекции crosswords.' : 'Failed to create crossword. Check Firestore rules for crosswords collection.');
     } finally {
       setCreating(false);
+    }
+  };
+
+  const handleDeleteCrossword = async (id: string) => {
+    const confirmMsg = language === 'ru' ? t('deleteCrosswordConfirm') : 'Delete this crossword? This action cannot be undone.';
+    if (!window.confirm(confirmMsg)) return;
+    try {
+      await deleteDoc(doc(db, 'crosswords', id));
+      setCrosswords(prev => prev.filter(cw => cw.id !== id));
+      playSound('page-turn');
+    } catch (err) {
+      handleFirestoreError(err, 'delete');
+      console.error(err);
+    }
+  };
+
+  const handleToggleTemplate = async (cw: Crossword) => {
+    try {
+      const ref = doc(db, 'crosswords', cw.id);
+      await updateDoc(ref, { isTemplate: !cw.isTemplate, updatedAt: Date.now() });
+      setCrosswords(prev => prev.map(c => c.id === cw.id ? { ...c, isTemplate: !c.isTemplate } : c));
+      playSound('bookmark');
+    } catch (err) {
+      handleFirestoreError(err, 'update');
+      console.error(err);
     }
   };
 
@@ -466,14 +492,39 @@ export function Dashboard() {
                   )}
 
                   <div className="p-5 flex-1 flex flex-col">
-                    {/* заголовок + badge */}
+                    {/* заголовок + badge + actions */}
                     <div className="flex items-start justify-between gap-3 mb-3">
-                      <h3 className="font-display text-lg font-bold text-cafe-leather group-hover:text-cafe-honey transition-colors line-clamp-2 leading-snug">
-                        {cw.title || t('untitled')}
-                      </h3>
-                      {cw.isPublished && (
-                        <span className="badge badge-live shrink-0 text-[9px]">{t('live')}</span>
-                      )}
+                      <div className="flex-1 min-w-0">
+                        <h3 className="font-display text-lg font-bold text-cafe-leather group-hover:text-cafe-honey transition-colors line-clamp-2 leading-snug">
+                          {cw.title || t('untitled')}
+                        </h3>
+                        {cw.isTemplate && (
+                          <span className="inline-flex items-center gap-1 mt-1 text-[10px] font-mono text-cafe-gold/80">
+                            <Bookmark size={10} />{language === 'ru' ? 'Шаблон' : 'Template'}
+                          </span>
+                        )}
+                      </div>
+                      <div className="flex items-center gap-1 shrink-0">
+                        {cw.isPublished && (
+                          <span className="badge badge-live shrink-0 text-[9px]">{t('live')}</span>
+                        )}
+                        <motion.button
+                          whileTap={{ scale: 0.9 }}
+                          onClick={() => handleToggleTemplate(cw)}
+                          title={cw.isTemplate ? t('removeTemplate') : t('makeTemplate')}
+                          className="p-1.5 rounded-sm text-cafe-leather/40 hover:text-cafe-gold hover:bg-cafe-leather/5 transition-all"
+                        >
+                          <Bookmark size={14} fill={cw.isTemplate ? 'currentColor' : 'none'} />
+                        </motion.button>
+                        <motion.button
+                          whileTap={{ scale: 0.9 }}
+                          onClick={() => handleDeleteCrossword(cw.id)}
+                          title={t('deleteCrossword')}
+                          className="p-1.5 rounded-sm text-cafe-leather/40 hover:text-red-500 hover:bg-red-500/5 transition-all"
+                        >
+                          <Trash2 size={14} />
+                        </motion.button>
+                      </div>
                     </div>
 
                     {/* мета */}

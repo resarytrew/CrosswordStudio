@@ -12,7 +12,8 @@ export type SoundType =
   | 'achievement'
   | 'coffee-pour'
   | 'clock-tick'
-  | 'book-open';
+  | 'book-open'
+  | 'bookmark';
 
 interface SoundConfig {
   volume: number;
@@ -77,6 +78,7 @@ export function useSound(): UseSoundReturn {
       'coffee-pour': { frequency: 150, duration: 0.6, type: 'sine' },
       'clock-tick': { frequency: 1000, duration: 0.02, type: 'square' },
       'book-open': { frequency: 400, duration: 0.3, type: 'triangle' },
+      'bookmark': { frequency: 587.33, duration: 0.15, type: 'sine' },
     };
     return tones[type] || { frequency: 440, duration: 0.1, type: 'sine' };
   }, []);
