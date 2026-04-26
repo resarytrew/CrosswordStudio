@@ -68,7 +68,8 @@ export function Dashboard() {
   const { language, t } = useLanguage();
   const { playSound, effectsEnabled } = useCafe();
   const navigate = useNavigate();
-  const [crosswords, setCrosswords] = useState<Crossword[]>([]);
+const [crosswords, setCrosswords] = useState<Crossword[]>([]);
+  const [userTemplates, setUserTemplates] = useState<Crossword[]>([]);
   const [loading, setLoading] = useState(true);
   const [creating, setCreating] = useState(false);
 
@@ -84,6 +85,7 @@ export function Dashboard() {
         );
         const snapshot = await getDocs(q);
         setCrosswords(snapshot.docs.map(d => ({ id: d.id, ...d.data() } as Crossword)));
+        setUserTemplates(snapshot.docs.filter(d => d.data().isTemplate === true).map(d => ({ id: d.id, ...d.data() } as Crossword)));
       } catch (err) {
         handleFirestoreError(err, 'list');
         console.error(err);
@@ -360,7 +362,7 @@ try {
           <p className="font-body text-sm text-[#d3dbc8]/70 hidden sm:block">{t('templatesDesc')}</p>
         </div>
 
-        <motion.div
+<motion.div
           initial="hidden"
           animate="visible"
           variants={{ hidden: { opacity: 0 }, visible: { opacity: 1, transition: { staggerChildren: 0.08 } } }}
@@ -390,6 +392,78 @@ try {
           ))}
         </motion.div>
       </section>
+
+      {/* ═══ МОИ ШАБЛОНЫ ═══ */}
+      {userTemplates.length > 0 && (
+        <section className="mb-12">
+          <div className="flex items-end justify-between mb-6">
+            <div className="flex items-center gap-3">
+              <Bookmark size={24} className="text-cafe-gold/60" />
+              <div>
+                <div className="flex items-center gap-2 mb-1">
+                  <div className="w-6 h-px bg-cafe-gold" />
+                  <span className="font-subhead text-xs uppercase tracking-[0.2em] text-cafe-gold font-semibold">
+                    {language === 'ru' ? 'Мои шаблоны' : 'My Templates'}
+                  </span>
+                </div>
+                <h2 className="font-display text-2xl font-bold text-[#edf2e3]">{t('myTemplates')}</h2>
+              </div>
+            </div>
+            <p className="font-body text-sm text-[#d3dbc8]/70 hidden sm:block">{t('myTemplatesDesc')}</p>
+          </div>
+
+          <motion.div
+            initial="hidden"
+            animate="visible"
+            variants={{ hidden: { opacity: 0 }, visible: { opacity: 1, transition: { staggerChildren: 0.08 } } }}
+            className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-4"
+          >
+            {userTemplates.map((tpl) => {
+              const board = parseBoardState(tpl.boardState);
+              return (
+                <motion.button
+                  key={tpl.id}
+                  onClick={() => { playSound('page-turn'); navigate(`/editor/${tpl.id}`); }}
+                  variants={{ hidden: { opacity: 0, y: 12 }, visible: { opacity: 1, y: 0 } }}
+                  whileHover={{ y: -6, scale: 1.03 }}
+                  whileTap={{ scale: 0.97 }}
+                  className="bg-[linear-gradient(165deg,#f4eddf_0%,#ece3d2_100%)] group rounded-sm p-4 shadow-md hover:shadow-xl hover:shadow-black/20 transition-all duration-300 border border-[#c4b79f]/45 flex flex-col items-center text-center relative overflow-hidden"
+                >
+                  <div className="absolute inset-0 bg-gradient-to-b from-cafe-gold/0 to-cafe-gold/5 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none" />
+
+                  <div className="w-16 h-16 bg-cafe-parchment/50 rounded-sm overflow-hidden p-1.5 border border-cafe-leather/10 group-hover:border-cafe-gold/30 transition-colors mb-3 relative">
+                    {board && (
+                      <div
+                        className="grid w-full h-full gap-[0.5px]"
+                        style={{
+                          gridTemplateColumns: `repeat(${board.width}, minmax(0, 1fr))`,
+                          gridTemplateRows: `repeat(${board.height}, minmax(0, 1fr))`,
+                        }}
+                      >
+                        {board.grid.map((cell, i) => (
+                          <div
+                            key={i}
+                            className={
+                              cell.isBlock ? 'bg-cafe-leather rounded-[0.5px]'
+                              : cell.isHidden ? 'bg-transparent'
+                              : 'bg-cafe-paper border-[0.3px] border-cafe-leather/10 rounded-[0.5px]'
+                            }
+                          />
+                        ))}
+                      </div>
+                    )}
+                  </div>
+
+                  <h3 className="font-display text-sm font-semibold text-[#1f2a36] group-hover:text-[#5a7b52] transition-colors leading-tight line-clamp-2">
+                    {tpl.title}
+                  </h3>
+                  {board && <span className="font-mono text-[10px] text-[#3b5264]/55 mt-1">{board.width}×{board.height}</span>}
+                </motion.button>
+              );
+            })}
+          </motion.div>
+        </section>
+      )}
 
       {/* ═══ КНИЖНАЯ ПОЛКА — МОИ КРОССВОРДЫ ═══ */}
       <section>
