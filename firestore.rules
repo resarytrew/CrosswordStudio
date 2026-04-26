@@ -12,24 +12,24 @@ service cloud.firestore {
     function existing() { return resource.data; }
 
     function isValidCrossword(data) {
-      return data.keys().hasAll(['authorId', 'title', 'boardState', 'answersHash', 'createdAt', 'updatedAt', 'isPublished']) 
-        && data.keys().size() == 7
+      return data.keys().hasAll(['authorId', 'title', 'boardState', 'answersHash', 'createdAt', 'updatedAt', 'isPublished'])
         && data.authorId is string && data.authorId == request.auth.uid
         && data.title is string && data.title.size() <= 100
         && data.boardState is map
         && data.answersHash is string && data.answersHash.size() <= 64
-        && data.createdAt is number
-        && data.updatedAt is number
+        && data.createdAt is number && data.createdAt > 0
+        && data.updatedAt is number && data.updatedAt > 0
         && data.isPublished is bool;
     }
 
     function isValidCrosswordUpdate(data, old) {
-      return data.authorId == old.authorId
+      return data.keys().hasAll(['authorId', 'title', 'boardState', 'answersHash', 'createdAt', 'updatedAt', 'isPublished'])
+        && data.authorId == old.authorId
         && data.createdAt == old.createdAt
         && data.title is string && data.title.size() <= 100
         && data.boardState is map
         && data.answersHash is string && data.answersHash.size() <= 64
-        && data.updatedAt is number
+        && data.updatedAt is number && data.updatedAt >= old.updatedAt
         && data.isPublished is bool;
     }
 
@@ -53,7 +53,6 @@ service cloud.firestore {
 
     function isValidProgress(data) {
       return data.keys().hasAll(['userId', 'crosswordId', 'answers', 'timer', 'isCompleted', 'lastUpdated'])
-        && data.keys().size() == 6
         && data.userId is string && data.userId == request.auth.uid
         && data.crosswordId is string && data.crosswordId.size() <= 128
         && data.answers is string && data.answers.size() <= 200000
@@ -63,12 +62,13 @@ service cloud.firestore {
     }
 
     function isValidProgressUpdate(data, old) {
-       return data.userId == old.userId
+       return data.keys().hasAll(['userId', 'crosswordId', 'answers', 'timer', 'isCompleted', 'lastUpdated'])
+         && data.userId == old.userId
          && data.crosswordId == old.crosswordId
          && data.answers is string && data.answers.size() <= 200000
          && data.timer is number
          && data.isCompleted is bool
-         && data.lastUpdated is number;
+         && data.lastUpdated is number && data.lastUpdated >= old.lastUpdated;
     }
 
     match /progress/{progressId} {
@@ -79,8 +79,8 @@ service cloud.firestore {
          
       allow update: if isValidId(progressId) && isSignedIn() && existing().userId == request.auth.uid && (
          incoming().diff(existing()).affectedKeys().hasOnly(['answers', 'timer', 'isCompleted', 'lastUpdated']) &&
-         isValidProgressUpdate(incoming(), old)
-      );
+         isValidProgressUpdate(incoming(), existing())
+       );
 
       allow delete: if isValidId(progressId) && isSignedIn() && existing().userId == request.auth.uid;
     }
