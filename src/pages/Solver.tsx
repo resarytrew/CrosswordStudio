@@ -392,7 +392,7 @@ export function Solver() {
   }
 
   return (
-    <div className="flex flex-col h-full bg-[radial-gradient(circle_at_12%_8%,rgba(176,141,87,0.14),transparent_42%),radial-gradient(circle_at_88%_84%,rgba(63,42,36,0.16),transparent_38%),linear-gradient(180deg,#ece7de_0%,#d8d0c2_100%)] overflow-hidden relative" onKeyDown={handleKeyDown} tabIndex={0}>
+    <div className="flex flex-col h-full bg-[radial-gradient(circle_at_18%_14%,rgba(121,151,122,0.2),transparent_34%),radial-gradient(circle_at_82%_86%,rgba(41,33,27,0.32),transparent_42%),linear-gradient(180deg,#191713_0%,#201c16_38%,#29231b_100%)] overflow-hidden relative" onKeyDown={handleKeyDown} tabIndex={0}>
       {effectsEnabled && <FloatingParticles count={6} className="opacity-15 z-0" />}
       {effectsEnabled && <LampGlow className="opacity-35" intensity="soft" />}
       <div className="absolute inset-0 z-0 overflow-hidden pointer-events-none">
@@ -474,27 +474,27 @@ export function Solver() {
         )}
       </AnimatePresence>
 
-      <div className="h-14 flex items-center justify-between px-4 sm:px-6 bg-cafe-paper/75 backdrop-blur-xl border-b border-cafe-leather/10 shrink-0 relative z-20">
+      <div className="h-14 flex items-center justify-between px-4 sm:px-6 bg-[linear-gradient(90deg,rgba(23,26,22,0.88),rgba(35,31,26,0.84))] backdrop-blur-xl border-b border-[#5f6d58]/30 shrink-0 relative z-20">
         <div className="flex items-center gap-3 min-w-0">
           <motion.button
             whileTap={{ scale: 0.9 }}
             onClick={() => (window.location.href = "/")}
-            className="text-cafe-espresso/40 hover:text-cafe-leather transition-colors p-1.5 hover:bg-cafe-leather/5 rounded-sm"
+            className="text-[#c9c2b7]/55 hover:text-[#f4efe4] transition-colors p-1.5 hover:bg-[#5f6d58]/20 rounded-sm"
           >
             <ArrowLeft size={18} />
           </motion.button>
-          <div className="h-5 w-px bg-cafe-leather/10" />
-          <h1 className="text-lg font-display font-bold text-cafe-leather truncate">{cw.title}</h1>
+          <div className="h-5 w-px bg-[#5f6d58]/35" />
+          <h1 className="text-lg font-display font-bold text-[#f1ebdf] truncate">{cw.title}</h1>
         </div>
 
         <div className="flex items-center gap-3">
-          <div className="hidden sm:flex items-center gap-2 text-[11px] font-mono text-cafe-espresso/70 bg-[linear-gradient(120deg,rgba(255,255,255,0.78),rgba(228,221,210,0.66))] border border-cafe-leather/15 px-2.5 py-1 rounded-sm shadow-[inset_0_1px_0_rgba(255,255,255,0.5)]">
+          <div className="hidden sm:flex items-center gap-2 text-[11px] font-mono text-[#e2dccf]/85 bg-[linear-gradient(120deg,rgba(84,99,80,0.3),rgba(45,41,34,0.55))] border border-[#6f8069]/40 px-2.5 py-1 rounded-sm shadow-[inset_0_1px_0_rgba(162,188,152,0.22)]">
             <span>{t("solverProgress")}</span>
-            <span className="font-bold text-cafe-leather">{progressPercent}%</span>
+            <span className="font-bold text-[#d3e2c1]">{progressPercent}%</span>
           </div>
 
-          <div className="flex items-center gap-1.5 font-mono text-sm font-bold text-cafe-leather bg-[linear-gradient(120deg,rgba(243,238,230,0.88),rgba(255,255,255,0.82))] px-2.5 py-1 rounded-sm border border-cafe-leather/15 shadow-[inset_0_1px_0_rgba(255,255,255,0.5)]">
-            <ClockTick className="text-cafe-gold" />
+          <div className="flex items-center gap-1.5 font-mono text-sm font-bold text-[#f0eadf] bg-[linear-gradient(120deg,rgba(79,93,75,0.42),rgba(43,39,33,0.65))] px-2.5 py-1 rounded-sm border border-[#6f8069]/38 shadow-[inset_0_1px_0_rgba(157,189,143,0.18)]">
+            <ClockTick className="text-[#b3cda0]" />
             <span>{formatTime(timer)}</span>
           </div>
 
@@ -528,7 +528,7 @@ export function Solver() {
           initial={false}
           animate={{ width: `${progressPercent}%` }}
           transition={{ duration: 0.32, ease: "easeOut" }}
-          className="h-full bg-[linear-gradient(90deg,#6f4f23_0%,#b08d57_52%,#7a5a2a_100%)] shadow-[0_0_14px_rgba(176,141,87,0.42)]"
+          className="h-full bg-[linear-gradient(90deg,#5f6d58_0%,#a8c39a_52%,#6f8069_100%)] shadow-[0_0_14px_rgba(157,188,143,0.42)]"
         />
       </div>
 
@@ -561,7 +561,7 @@ export function Solver() {
           <motion.div
             whileTap={{ scale: 0.998 }}
             transition={{ duration: 0.12 }}
-            className="relative w-full max-w-[680px] rounded-sm border border-cafe-leather/18 p-2 bg-[linear-gradient(165deg,rgba(252,250,245,0.94)_0%,rgba(224,216,204,0.76)_100%)] shadow-[0_20px_50px_rgba(31,24,18,0.2)]"
+            className="relative w-full max-w-[680px] rounded-sm border border-[#6b5f4d]/45 p-2 bg-[linear-gradient(165deg,rgba(236,228,214,0.92)_0%,rgba(170,157,138,0.48)_100%)] shadow-[0_20px_50px_rgba(11,10,8,0.4)]"
             style={{ aspectRatio: "1/1" }}
           >
             <CanvasGrid
@@ -598,17 +598,17 @@ export function Solver() {
             initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.25 }}
-            className="hidden xl:flex w-full max-w-[680px] mt-5 items-stretch bg-[linear-gradient(145deg,rgba(255,255,255,0.86),rgba(229,221,208,0.74))] backdrop-blur-xl rounded-sm border border-cafe-leather/14 shadow-xl overflow-hidden"
+            className="hidden xl:flex w-full max-w-[680px] mt-5 items-stretch bg-[linear-gradient(145deg,rgba(43,39,33,0.72),rgba(61,54,45,0.62))] backdrop-blur-xl rounded-sm border border-[#6f8069]/32 shadow-xl overflow-hidden"
           >
-            <button onClick={() => navigateClue(-1)} className="w-14 flex items-center justify-center hover:bg-cafe-leather/5 transition-all text-cafe-espresso/30 hover:text-cafe-honey">
+            <button onClick={() => navigateClue(-1)} className="w-14 flex items-center justify-center hover:bg-[#5f6d58]/20 transition-all text-[#dfd9cc]/40 hover:text-[#d3e2c1]">
               <ChevronLeft size={24} />
             </button>
-            <div className="flex-1 px-5 py-3.5 flex items-center gap-4 cursor-pointer hover:bg-cafe-leather/[0.02] transition-colors" onClick={() => setDirection((d) => (d === "across" ? "down" : "across"))}>
-              <span className="font-display font-bold text-cafe-gold text-xl w-8 text-right shrink-0">{activeClueInfo?.number}</span>
-              <span className="font-body text-cafe-leather text-lg leading-snug">{activeClueInfo?.text || <span className="text-cafe-espresso/30 italic text-base">{t("noClue")}</span>}</span>
-              <span className="text-cafe-espresso/30 shrink-0 ml-auto">{direction === "across" ? <ArrowRight size={20} /> : <ArrowDown size={20} />}</span>
+            <div className="flex-1 px-5 py-3.5 flex items-center gap-4 cursor-pointer hover:bg-[#5f6d58]/14 transition-colors" onClick={() => setDirection((d) => (d === "across" ? "down" : "across"))}>
+              <span className="font-display font-bold text-[#d3e2c1] text-xl w-8 text-right shrink-0">{activeClueInfo?.number}</span>
+              <span className="font-body text-[#f0eadf] text-lg leading-snug">{activeClueInfo?.text || <span className="text-[#e0d7c8]/35 italic text-base">{t("noClue")}</span>}</span>
+              <span className="text-[#e0d7c8]/35 shrink-0 ml-auto">{direction === "across" ? <ArrowRight size={20} /> : <ArrowDown size={20} />}</span>
             </div>
-            <button onClick={() => navigateClue(1)} className="w-14 flex items-center justify-center hover:bg-cafe-leather/5 transition-all text-cafe-espresso/30 hover:text-cafe-honey">
+            <button onClick={() => navigateClue(1)} className="w-14 flex items-center justify-center hover:bg-[#5f6d58]/20 transition-all text-[#dfd9cc]/40 hover:text-[#d3e2c1]">
               <ChevronRight size={24} />
             </button>
           </motion.div>
@@ -616,25 +616,25 @@ export function Solver() {
 
         <div
           className={clsx(
-            "w-full xl:w-[560px] shrink-0 xl:h-[calc(100vh-7rem)] fixed bottom-0 left-0 right-0 xl:static bg-[linear-gradient(165deg,rgba(247,243,236,0.98)_0%,rgba(214,206,194,0.95)_100%)] z-20 xl:z-10 shadow-[0_-14px_40px_rgba(30,22,16,0.14)] xl:shadow-[0_16px_34px_rgba(30,22,16,0.16)] border-t border-cafe-leather/14 xl:border xl:border-cafe-leather/12 xl:rounded-sm flex flex-col overflow-hidden transition-[height] duration-300",
+            "w-full xl:w-[760px] shrink-0 xl:h-[calc(100vh-7rem)] fixed bottom-0 left-0 right-0 xl:static bg-[linear-gradient(165deg,rgba(29,26,22,0.96)_0%,rgba(43,38,31,0.95)_100%)] z-20 xl:z-10 shadow-[0_-14px_40px_rgba(12,10,8,0.35)] xl:shadow-[0_16px_34px_rgba(12,10,8,0.4)] border-t border-[#6f8069]/30 xl:border xl:border-[#6f8069]/28 xl:rounded-sm flex flex-col overflow-hidden transition-[height] duration-300",
             sheetExpanded ? "h-[78vh]" : "h-[46vh]",
             "xl:h-[calc(100vh-7rem)]"
           )}
         >
           <button
             onClick={() => setSheetExpanded((v) => !v)}
-            className="xl:hidden h-8 border-b border-cafe-leather/8 flex items-center justify-center text-cafe-espresso/40 hover:text-cafe-leather transition-colors"
+            className="xl:hidden h-8 border-b border-[#6f8069]/28 flex items-center justify-center text-[#ddd4c4]/45 hover:text-[#d3e2c1] transition-colors"
           >
             <GripHorizontal size={18} />
           </button>
 
-          <div className="xl:hidden px-3 pt-3 pb-2 border-b border-cafe-leather/12 bg-[linear-gradient(145deg,rgba(250,248,243,0.72),rgba(223,214,200,0.46))] backdrop-blur-md">
-            <div className="relative grid grid-cols-2 rounded-sm border border-cafe-leather/15 bg-[linear-gradient(145deg,rgba(255,255,255,0.5),rgba(217,208,193,0.32))] p-1">
+          <div className="xl:hidden px-3 pt-3 pb-2 border-b border-[#6f8069]/24 bg-[linear-gradient(145deg,rgba(41,37,31,0.82),rgba(56,50,41,0.62))] backdrop-blur-md">
+            <div className="relative grid grid-cols-2 rounded-sm border border-[#6f8069]/30 bg-[linear-gradient(145deg,rgba(18,17,14,0.35),rgba(56,50,41,0.32))] p-1">
               <motion.div
                 initial={false}
                 animate={{ x: direction === "across" ? "0%" : "100%" }}
                 transition={{ type: "spring", stiffness: 240, damping: 28 }}
-                className="absolute top-1 bottom-1 left-1 w-[calc(50%-4px)] rounded-sm bg-[linear-gradient(140deg,rgba(176,141,87,0.52)_0%,rgba(93,78,54,0.24)_100%)] border border-[#8c6a3b]/45 shadow-[0_5px_16px_rgba(111,79,35,0.26)]"
+                className="absolute top-1 bottom-1 left-1 w-[calc(50%-4px)] rounded-sm bg-[linear-gradient(140deg,rgba(98,122,95,0.58)_0%,rgba(65,82,61,0.28)_100%)] border border-[#8bab84]/40 shadow-[0_5px_16px_rgba(98,122,95,0.3)]"
               />
               {(["across", "down"] as const).map((dir) => (
                 <button
@@ -646,7 +646,7 @@ export function Solver() {
                   }}
                   className={clsx(
                     "relative z-10 h-10 flex items-center justify-center gap-2 rounded-sm text-sm font-subhead font-bold tracking-[0.06em] transition-colors",
-                    direction === dir ? "text-cafe-leather" : "text-cafe-espresso/60"
+                    direction === dir ? "text-[#f3eee2]" : "text-[#d9d0c0]/58"
                   )}
                 >
                   {dir === "across" ? <ArrowRight size={14} /> : <ArrowDown size={14} />}
@@ -656,7 +656,7 @@ export function Solver() {
             </div>
           </div>
 
-          <div className="hidden xl:grid xl:grid-cols-2 gap-3 p-3 border-b border-cafe-leather/12 bg-[linear-gradient(145deg,rgba(252,250,246,0.6),rgba(220,212,199,0.42))] backdrop-blur-md">
+          <div className="hidden xl:grid xl:grid-cols-2 gap-3 p-3 border-b border-[#6f8069]/22 bg-[linear-gradient(145deg,rgba(34,30,25,0.72),rgba(53,47,39,0.52))] backdrop-blur-md">
             {(["across", "down"] as const).map((dir) => {
               const accent = dir === "across" ? "from-[#d8b06a]/45" : "from-[#6c8197]/35";
               const active = direction === dir;
@@ -671,17 +671,17 @@ export function Solver() {
                   className={clsx(
                     "relative rounded-sm border px-4 py-2.5 text-left transition-all",
                     active
-                      ? `border-[#8c6a3b]/45 bg-[linear-gradient(140deg,rgba(246,240,228,0.95)_0%,rgba(255,255,255,0.82)_100%)] shadow-[0_8px_20px_rgba(91,66,35,0.24)]`
-                      : `border-cafe-leather/20 bg-[linear-gradient(140deg,rgba(255,255,255,0.82)_0%,rgba(226,218,206,0.62)_100%)] hover:border-[#8c6a3b]/35`
+                      ? `border-[#8bab84]/45 bg-[linear-gradient(140deg,rgba(86,103,82,0.65)_0%,rgba(51,45,38,0.7)_100%)] shadow-[0_8px_20px_rgba(20,19,15,0.35)]`
+                      : `border-[#6f8069]/24 bg-[linear-gradient(140deg,rgba(44,39,33,0.75)_0%,rgba(56,50,41,0.65)_100%)] hover:border-[#8bab84]/35`
                   )}
                 >
                   <span className={clsx("absolute inset-0 rounded-sm bg-gradient-to-r to-transparent opacity-35", accent)} />
                   <span className="relative flex items-center justify-between">
-                    <span className="flex items-center gap-2 font-subhead text-sm font-bold tracking-[0.08em] text-cafe-leather uppercase">
+                    <span className="flex items-center gap-2 font-subhead text-sm font-bold tracking-[0.08em] text-[#f3eee2] uppercase">
                       {dir === "across" ? <ArrowRight size={14} /> : <ArrowDown size={14} />}
                       {t(dir)}
                     </span>
-                    <span className="font-mono text-xs text-cafe-espresso/55">{board.clues[dir].length}</span>
+                    <span className="font-mono text-xs text-[#d3cab9]/70">{board.clues[dir].length}</span>
                   </span>
                 </button>
               );
@@ -700,16 +700,16 @@ export function Solver() {
                   className={clsx(
                     "flex flex-col h-full overflow-hidden",
                     direction !== dir ? "hidden xl:flex" : "flex",
-                    "xl:rounded-sm xl:border xl:border-cafe-leather/12 xl:bg-[linear-gradient(160deg,rgba(255,255,255,0.7),rgba(225,217,204,0.56))] xl:backdrop-blur-md"
+                    "xl:rounded-sm xl:border xl:border-[#6f8069]/25 xl:bg-[linear-gradient(160deg,rgba(48,43,36,0.78),rgba(62,55,46,0.58))] xl:backdrop-blur-md"
                   )}
                 >
-                  <div className="px-4 py-3 border-b border-cafe-leather/12 bg-[linear-gradient(140deg,rgba(255,255,255,0.74)_0%,rgba(217,209,195,0.6)_100%)]">
+                  <div className="px-4 py-3 border-b border-[#6f8069]/24 bg-[linear-gradient(140deg,rgba(42,39,33,0.82)_0%,rgba(56,50,41,0.68)_100%)]">
                     <div className="flex items-center justify-between gap-3">
-                      <h2 className="font-display text-xl leading-none text-cafe-leather tracking-tight flex items-center gap-2">
-                        {dir === "across" ? <ArrowRight size={17} className="text-cafe-honey" /> : <ArrowDown size={17} className="text-cafe-honey" />}
+                      <h2 className="font-display text-xl leading-none text-[#f4efe4] tracking-tight flex items-center gap-2">
+                        {dir === "across" ? <ArrowRight size={17} className="text-[#b3cda0]" /> : <ArrowDown size={17} className="text-[#b3cda0]" />}
                         {t(dir)}
                       </h2>
-                      <span className="font-mono text-xs px-2 py-1 rounded-sm bg-cafe-leather/8 text-cafe-espresso/70">
+                      <span className="font-mono text-xs px-2 py-1 rounded-sm bg-[#20241e] text-[#d4cbbb]/70 border border-[#6f8069]/25">
                         {board.clues[dir].length}
                       </span>
                     </div>
@@ -743,19 +743,19 @@ export function Solver() {
                           className={clsx(
                             "relative w-full text-left grid grid-cols-[42px_1fr] gap-2.5 items-start px-3 py-3 rounded-sm transition-all border border-transparent",
                             isActive
-                              ? "bg-[linear-gradient(96deg,rgba(176,141,87,0.26)_0%,rgba(238,233,225,0.84)_45%,rgba(255,255,255,0.9)_100%)] border-[#8c6a3b]/35 shadow-[0_8px_20px_rgba(101,76,44,0.2)]"
-                              : "hover:bg-[linear-gradient(96deg,rgba(255,255,255,0.72),rgba(229,221,208,0.52))] hover:border-cafe-leather/14"
+                              ? "bg-[linear-gradient(96deg,rgba(98,122,95,0.36)_0%,rgba(66,81,62,0.44)_45%,rgba(44,40,34,0.62)_100%)] border-[#8bab84]/38 shadow-[0_8px_20px_rgba(12,11,9,0.35)]"
+                              : "hover:bg-[linear-gradient(96deg,rgba(58,52,43,0.66),rgba(66,58,47,0.54))] hover:border-[#6f8069]/28"
                           )}
                         >
-                          <span className={clsx("font-display text-lg leading-none pt-0.5 text-right", isActive ? "text-cafe-honey" : "text-cafe-leather/65")}>{clue.number}</span>
-                          <span className={clsx("font-body text-[15px] leading-relaxed", isActive ? "text-cafe-leather" : "text-cafe-espresso")}>{clue.text || <span className="text-cafe-espresso/40 italic">{t("noClue")}</span>}</span>
+                          <span className={clsx("font-display text-lg leading-none pt-0.5 text-right", isActive ? "text-[#d3e2c1]" : "text-[#cabfae]/72")}>{clue.number}</span>
+                          <span className={clsx("font-body text-[15px] leading-relaxed", isActive ? "text-[#f5f0e5]" : "text-[#ddd4c4]")}>{clue.text || <span className="text-[#d7ccbb]/45 italic">{t("noClue")}</span>}</span>
                           {isActive && (
                             <>
                               <motion.span
                                 layoutId="active-clue-rail"
                                 className={clsx("absolute left-0 top-1.5 bottom-1.5 w-1 rounded-r-sm bg-gradient-to-b to-transparent", accentRail)}
                               />
-                              <span className="pointer-events-none absolute inset-y-0 right-2 w-12 bg-gradient-to-l from-cafe-gold/22 to-transparent" />
+                              <span className="pointer-events-none absolute inset-y-0 right-2 w-12 bg-gradient-to-l from-[#8bab84]/28 to-transparent" />
                             </>
                           )}
                         </motion.button>
