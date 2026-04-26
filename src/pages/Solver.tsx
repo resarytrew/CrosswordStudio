@@ -12,7 +12,7 @@ import {
   CheckCircle2, ArrowRight, ArrowDown, ArrowLeft,
   ChevronLeft, ChevronRight, BookOpen, Feather, Trophy,
 } from "lucide-react";
-import { motion, AnimatePresence } from "motion/react";
+import { motion, AnimatePresence } from "framer-motion";
 import { Steam, FloatingParticles, CoffeeBean, ClockTick, SuccessBurst } from "../components/CafeAnimations";
 import { CanvasGrid } from "../components/CanvasGrid";
 import { hashString } from "../lib/crypto";

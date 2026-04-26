@@ -1,5 +1,5 @@
 import React, { useCallback } from 'react';
-import { motion } from 'motion/react';
+import { motion } from 'framer-motion';
 import type { CrosswordBoard, AllWordBounds } from './types';
 import { useGridMap } from './hooks/useGridMap';
 import { useCanvasRenderer } from './hooks/useCanvasRenderer';

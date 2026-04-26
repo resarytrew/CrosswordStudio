@@ -8,7 +8,7 @@ import { useCafe } from '../contexts/CafeContext';
 import { BoardState, Crossword } from '../types';
 import { parseBoardState } from '../lib/boardParser';
 import { Download, Share2, Instagram, Twitter, Copy, Check, Palette, Sparkles, Type, Sunrise } from 'lucide-react';
-import { motion, AnimatePresence } from 'motion/react';
+import { motion, AnimatePresence } from 'framer-motion';
 
 type WordArtStyle = 'classic' | 'neon' | 'minimalist' | 'vintage' | 'modern';
 type ExportType = 'filled' | 'empty' | 'clues';

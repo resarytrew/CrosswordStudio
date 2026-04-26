@@ -4,7 +4,7 @@ import { useLanguage } from '../contexts/LanguageContext';
 import { useCafe } from '../contexts/CafeContext';
 import { LogOut, LogIn, BookOpen, Globe, Volume2, VolumeX, Coffee } from 'lucide-react';
 import { Link } from 'react-router-dom';
-import { motion, AnimatePresence } from 'motion/react';
+import { motion, AnimatePresence } from 'framer-motion';
 import { Steam, CoffeeCup } from './CafeAnimations';
 
 export function Layout({ children }: { children: React.ReactNode }) {

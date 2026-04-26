@@ -13,7 +13,7 @@ import { Save, Share2, ArrowLeft, ArrowRight, ArrowDown, Trash2, LayoutGrid, Has
 import { LampGlow, InkDrop, BookSpine } from '../components/CafeAnimations';
 import { CanvasGrid } from '../components/CanvasGrid';
 import clsx from 'clsx';
-import { motion } from 'motion/react';
+import { motion } from 'framer-motion';
 
 export function Editor() {
   const { id } = useParams();
