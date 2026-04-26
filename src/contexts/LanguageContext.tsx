@@ -53,6 +53,15 @@ const translations: Translations = {
     clearGrid: "Clear letters",
     connectedWarning: "Grid has disconnected sections",
     result: "Result",
+    solverPreludeTagline: "Evening service",
+    solverPreludeDesc: "Settle in, pour a cup, and solve this crossword in the calm rhythm of the intellectual cafe.",
+    solverStart: "Begin Session",
+    solverResume: "Resume Session",
+    solverReady: "Ready",
+    solverAutosaveSaving: "Saving...",
+    solverAutosaveSaved: "Saved",
+    solverAutosaveError: "Save issue",
+    solverProgress: "Progress",
   },
   ru: {
     appTitle: "Студия кроссвордов",
@@ -98,6 +107,15 @@ const translations: Translations = {
     clearGrid: "Очистить буквы",
     connectedWarning: "Сетка содержит изолированные участки",
     result: "Результат",
+    solverPreludeTagline: "Вечерняя подача",
+    solverPreludeDesc: "Устройтесь поудобнее, налейте кофе и решайте кроссворд в спокойном ритме интеллектуального кафе.",
+    solverStart: "Начать сессию",
+    solverResume: "Продолжить сессию",
+    solverReady: "Готово",
+    solverAutosaveSaving: "Сохранение...",
+    solverAutosaveSaved: "Сохранено",
+    solverAutosaveError: "Ошибка сохранения",
+    solverProgress: "Прогресс",
   }
 };
 

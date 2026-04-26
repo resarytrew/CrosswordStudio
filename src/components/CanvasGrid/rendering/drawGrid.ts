@@ -155,6 +155,11 @@ function drawCellOverlays(
       if (isSelected || inWord) {
         ctx.fillStyle = isSelected ? COLORS.selectedCell : COLORS.highlightedWord;
         ctx.fillRect(px, py, cellSize, cellSize);
+        if (isSelected) {
+          ctx.strokeStyle = COLORS.gridLine;
+          ctx.lineWidth = Math.max(1.5, cellSize * 0.06);
+          ctx.strokeRect(px + 1, py + 1, cellSize - 2, cellSize - 2);
+        }
       }
 
       if (cell.number !== null) {

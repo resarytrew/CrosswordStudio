@@ -1,12 +1,12 @@
 export const COLORS = {
-  background: '#FAFAF7',
-  gridLine: '#2C1810',
-  blockFill: '#2C1810',
-  letter: '#2C1810',
+  background: '#FFFFFF',
+  gridLine: '#1E2A35',
+  blockFill: '#1E2A35',
+  letter: '#1E2A35',
   completedLetter: '#16A34A',
-  number: '#666666',
-  selectedCell: '#FCD34D',
-  highlightedWord: '#FEF3C7',
+  number: '#7A6A58',
+  selectedCell: '#E8C97A',
+  highlightedWord: '#F5EBDD',
   errorLetter: '#DC2626',
 } as const;
 
@@ -16,7 +16,7 @@ export const LAYOUT = {
   numberOffsetY: 2,
   numberFontSize: 10,
   letterFontSize: 24,
-  fontFamily: 'Inter, system-ui, sans-serif',
+  fontFamily: '"Source Serif 4", Georgia, serif',
 } as const;
 
 export const INTERACTION = {
