@@ -1,4 +1,4 @@
-import { useRef, useEffect, useCallback } from 'react';
+import { useRef, useEffect, useCallback, type RefObject } from 'react';
 import type { CrosswordBoard, AllWordBounds } from '../types';
 import type { GridMap } from '../utils/gridMap';
 import { drawFullGrid, type DrawContext } from '../rendering/drawGrid';
@@ -15,8 +15,8 @@ interface UseCanvasRendererParams {
 }
 
 interface UseCanvasRendererReturn {
-  canvasRef: React.RefObject<HTMLCanvasElement | null>;
-  containerRef: React.RefObject<HTMLDivElement | null>;
+  canvasRef: RefObject<HTMLCanvasElement | null>;
+  containerRef: RefObject<HTMLDivElement | null>;
   getCellFromPoint: (clientX: number, clientY: number) => { x: number; y: number } | null;
 }
 

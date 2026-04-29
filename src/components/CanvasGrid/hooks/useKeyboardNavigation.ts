@@ -1,4 +1,4 @@
-import { useCallback } from 'react';
+import { useCallback, type KeyboardEvent } from 'react';
 import type { CrosswordBoard } from '../types';
 import { type GridMap, getCell, isCellPlayable } from '../utils/gridMap';
 
@@ -35,7 +35,7 @@ export function useKeyboardNavigation(params: UseKeyboardNavigationParams) {
   );
 
   const handleKeyDown = useCallback(
-    (e: React.KeyboardEvent) => {
+    (e: KeyboardEvent) => {
       if (!selectedCell) return;
 
       const { x, y } = selectedCell;

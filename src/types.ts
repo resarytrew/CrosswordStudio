@@ -31,7 +31,7 @@ export interface GridCell {
   y: number;
   isBlock: boolean;
   isHidden?: boolean;
-  value?: string;
+  value: string;
   number: number | null;
 }
 

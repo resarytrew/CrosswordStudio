@@ -1,16 +1,16 @@
-import React, { useEffect, useState, useRef, useCallback } from 'react';
+import React, { useEffect, useState, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { db, handleFirestoreError } from '../lib/firebase';
 import { doc, getDoc, updateDoc } from 'firebase/firestore';
 import { useAuth } from '../contexts/AuthContext';
 import { useLanguage } from '../contexts/LanguageContext';
 import { useCafe } from '../contexts/CafeContext';
-import { BoardState, Clue, Crossword, GridCell } from '../types';
+import { BoardState, Crossword, GridCell } from '../types';
 import { updateGridNumbers } from '../lib/gridUtils';
 import { computeAnswersHash } from '../lib/crypto';
 import { parseBoardState } from '../lib/boardParser';
-import { Save, Share2, ArrowLeft, ArrowRight, ArrowDown, Trash2, LayoutGrid, Hash, CheckSquare, AlertTriangle, Bookmark, Sparkles, Image } from 'lucide-react';
-import { LampGlow, InkDrop, BookSpine } from '../components/CafeAnimations';
+import { Save, Share2, ArrowLeft, ArrowRight, ArrowDown, Trash2, LayoutGrid, Hash, CheckSquare, AlertTriangle, Image } from 'lucide-react';
+import { BookSpine } from '../components/CafeAnimations';
 import { CanvasGrid } from '../components/CanvasGrid';
 import clsx from 'clsx';
 import { motion } from 'framer-motion';
@@ -19,7 +19,7 @@ export function Editor() {
   const { id } = useParams();
   const { user } = useAuth();
   const { t } = useLanguage();
-  const { playSound, effectsEnabled } = useCafe();
+  const { playSound } = useCafe();
   const navigate = useNavigate();
 
   const [cw, setCw] = useState<Crossword | null>(null);
@@ -28,12 +28,8 @@ export function Editor() {
   const [selectedCell, setSelectedCell] = useState<{x: number, y: number} | null>(null);
   const [direction, setDirection] = useState<'across' | 'down'>('across');
   const [mobileCluePanel, setMobileCluePanel] = useState<'across' | 'down'>('across');
-  const [cellAnimations, setCellAnimations] = useState<Record<string, 'fill' | 'block' | null>>({});
-  
   const [saving, setSaving] = useState(false);
   const [title, setTitle] = useState('');
-
-  const gridRef = useRef<HTMLDivElement>(null);
 
   const triggerHaptic = useCallback((pattern: number | number[]) => {
     if (typeof navigator === 'undefined' || typeof navigator.vibrate !== 'function') return;
@@ -177,21 +173,6 @@ export function Editor() {
     return { startX, startY, endX, endY, length: dir === 'across' ? endX - startX + 1 : endY - startY + 1 };
   }, [board, getCell]);
 
-  const wordBounds = React.useMemo(() => {
-    if (!selectedCell || !board) return null;
-    const cell = getCell(selectedCell.x, selectedCell.y);
-    if (!cell || cell.isBlock || cell.isHidden) return null;
-    return getWordBounds(selectedCell.x, selectedCell.y, direction);
-  }, [selectedCell, direction, board, getWordBounds]);
-
-  const getAllWordBounds = React.useCallback((x: number, y: number) => {
-    if (!board) return { across: null, down: null };
-    return {
-      across: getWordBounds(x, y, 'across'),
-      down: getWordBounds(x, y, 'down')
-    };
-  }, [board, getWordBounds]);
-
   const allWordBounds = React.useMemo(() => {
     if (!selectedCell || !board) return { across: null, down: null };
     const cell = getCell(selectedCell.x, selectedCell.y);
@@ -267,14 +248,8 @@ export function Editor() {
     let newBoard = { ...board, grid: newGrid };
     newBoard = updateGridNumbers(newBoard);
     setBoard(newBoard);
-    // Play block toggle sound
     playSound('block-toggle');
     triggerHaptic([10, 16, 10]);
-    const key = `${x}-${y}`;
-    setCellAnimations(prev => ({ ...prev, [key]: 'block' }));
-    setTimeout(() => {
-      setCellAnimations(prev => ({ ...prev, [key]: null }));
-    }, 200);
   };
 
   const setHidden = (x: number, y: number, isHidden: boolean) => {
@@ -303,15 +278,9 @@ export function Editor() {
       return c;
     });
     setBoard({ ...board, grid: newGrid });
-    // Play sound and trigger animation
     if (letter) {
-      const key = `${x}-${y}`;
-      setCellAnimations(prev => ({ ...prev, [key]: 'fill' }));
       playSound('letter-input');
       triggerHaptic(8);
-      setTimeout(() => {
-        setCellAnimations(prev => ({ ...prev, [key]: null }));
-      }, 300);
     }
   };
 

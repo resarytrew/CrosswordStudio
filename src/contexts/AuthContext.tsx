@@ -24,7 +24,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   }, []);
 
   return (
-    <AuthContext.Provider value={{ user, loading, login: loginWithGoogle, logout }}>
+    <AuthContext.Provider value={{ user, loading, login: async () => { await loginWithGoogle(); }, logout }}>
       {!loading && children}
     </AuthContext.Provider>
   );
