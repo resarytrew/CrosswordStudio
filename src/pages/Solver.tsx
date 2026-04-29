@@ -1,5 +1,5 @@
 import React, { useEffect, useState, useCallback, useRef } from "react";
-import { useParams } from "react-router-dom";
+import { useNavigate, useParams } from "react-router-dom";
 import { db, handleFirestoreError } from "../lib/firebase";
 import { doc, getDoc, setDoc } from "firebase/firestore";
 import { useAuth } from "../contexts/AuthContext";
@@ -30,6 +30,7 @@ type InkPulse = { x: number; y: number; key: number } | null;
 
 export function Solver() {
   const { id } = useParams();
+  const navigate = useNavigate();
   const { user, login } = useAuth();
   const { language, t } = useLanguage();
   const { playSound, effectsEnabled } = useCafe();
@@ -46,6 +47,8 @@ export function Solver() {
   const [sheetExpanded, setSheetExpanded] = useState(false);
   const [saveState, setSaveState] = useState<SaveState>("idle");
   const [inkPulse, setInkPulse] = useState<InkPulse>(null);
+  const [loadState, setLoadState] = useState<"loading" | "ready" | "unavailable">("loading");
+  const [loadErrorMessage, setLoadErrorMessage] = useState("");
   const clueRefs = useRef<Record<string, HTMLButtonElement | null>>({});
   const saveStateTimerRef = useRef<number | null>(null);
   const inkPulseTimerRef = useRef<number | null>(null);
@@ -83,13 +86,30 @@ export function Solver() {
   useEffect(() => {
     if (!id) return;
     (async () => {
+      setLoadState("loading");
       try {
         const d = await getDoc(doc(db, "crosswords", id));
-        if (!d.exists()) return;
+        if (!d.exists()) {
+          setLoadErrorMessage(
+            language === "ru"
+              ? "Этот кроссворд удалён, ещё не опубликован или доступен только автору."
+              : "This crossword was removed, is not published yet, or is available only to its author."
+          );
+          setLoadState("unavailable");
+          return;
+        }
         const data = d.data() as Crossword;
         setCw(data);
         const parsedBoard = parseBoardState(data.boardState);
-        if (!parsedBoard) return;
+        if (!parsedBoard) {
+          setLoadErrorMessage(
+            language === "ru"
+              ? "Не удалось загрузить данные кроссворда."
+              : "Could not load this crossword."
+          );
+          setLoadState("unavailable");
+          return;
+        }
         setBoard(parsedBoard);
         for (let y = 0; y < parsedBoard.height; y++) {
           for (let x = 0; x < parsedBoard.width; x++) {
@@ -100,11 +120,18 @@ export function Solver() {
             }
           }
         }
+        setLoadState("ready");
       } catch (err) {
         handleFirestoreError(err, "get", `/crosswords/${id}`);
+        setLoadErrorMessage(
+          language === "ru"
+            ? "Этот кроссворд ещё не опубликован или доступ к нему ограничен."
+            : "This crossword is not published yet or access to it is restricted."
+        );
+        setLoadState("unavailable");
       }
     })();
-  }, [id]);
+  }, [id, language]);
 
   useEffect(() => {
     if (!id || !user) return;
@@ -378,7 +405,55 @@ export function Solver() {
           ? t("solverAutosaveError")
           : t("solverReady");
 
-  if (!board || !cw) {
+  if (loadState === "unavailable") {
+    return (
+      <div className="flex-1 flex items-center justify-center bg-[linear-gradient(180deg,#1f2c22_0%,#2a3b2d_100%)] px-4">
+        <div className="max-w-lg w-full rounded-sm bg-cafe-paper border border-cafe-leather/10 shadow-2xl overflow-hidden">
+          <div className="h-1.5 bg-gradient-to-r from-cafe-gold/20 via-cafe-gold to-cafe-gold/20" />
+          <div className="p-8 sm:p-9 text-center">
+            <div className="w-16 h-16 rounded-full bg-cafe-gold/10 border border-cafe-gold/20 text-cafe-honey flex items-center justify-center mx-auto mb-5">
+              <Coffee size={28} />
+            </div>
+            <h2 className="font-display text-3xl text-cafe-leather mb-3">
+              {language === "ru" ? "Кроссворд недоступен" : "Puzzle unavailable"}
+            </h2>
+            <p className="font-body text-cafe-espresso/70 leading-relaxed mb-4">
+              {loadErrorMessage}
+            </p>
+            {!user && (
+              <p className="font-body text-sm text-cafe-espresso/50 leading-relaxed mb-6">
+                {language === "ru"
+                  ? "Если это ваш черновик, войдите в аккаунт автора."
+                  : "Sign in if you are the author and want to open the draft."}
+              </p>
+            )}
+            <div className="flex flex-col gap-3">
+              {!user && (
+                <motion.button
+                  whileHover={{ scale: 1.02, y: -2 }}
+                  whileTap={{ scale: 0.98 }}
+                  onClick={login}
+                  className="w-full py-3.5 bg-[#334a35] text-[#eef3e7] rounded-sm font-subhead font-bold text-lg hover:bg-[#48624a] transition-all shadow-lg"
+                >
+                  {t("signInGoogle")}
+                </motion.button>
+              )}
+              <motion.button
+                whileHover={{ scale: 1.02, y: -2 }}
+                whileTap={{ scale: 0.98 }}
+                onClick={() => navigate("/")}
+                className="w-full py-3.5 bg-cafe-leather text-cafe-paper rounded-sm font-subhead font-bold text-lg hover:bg-cafe-espresso transition-all shadow-lg"
+              >
+                {language === "ru" ? "На главную" : "Go Home"}
+              </motion.button>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  if (loadState === "loading" || !board || !cw) {
     return (
       <div className="flex-1 flex flex-col items-center justify-center bg-[linear-gradient(180deg,#1f2c22_0%,#2a3b2d_100%)] gap-4">
         <motion.div

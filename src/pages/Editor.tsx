@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useCallback } from 'react';
+import React, { useEffect, useState, useCallback, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { db, handleFirestoreError } from '../lib/firebase';
 import { doc, getDoc, updateDoc } from 'firebase/firestore';
@@ -9,16 +9,21 @@ import { BoardState, Crossword, GridCell } from '../types';
 import { updateGridNumbers } from '../lib/gridUtils';
 import { computeAnswersHash } from '../lib/crypto';
 import { parseBoardState } from '../lib/boardParser';
-import { Save, Share2, ArrowLeft, ArrowRight, ArrowDown, Trash2, LayoutGrid, Hash, CheckSquare, AlertTriangle, Image } from 'lucide-react';
+import { Save, Share2, ArrowLeft, ArrowRight, ArrowDown, Trash2, LayoutGrid, Hash, CheckSquare, AlertTriangle, Image, Undo2, Redo2, Eraser, Square, EyeOff } from 'lucide-react';
 import { BookSpine } from '../components/CafeAnimations';
 import { CanvasGrid } from '../components/CanvasGrid';
 import clsx from 'clsx';
 import { motion } from 'framer-motion';
 
+type EditorSnapshot = {
+  board: BoardState;
+  title: string;
+};
+
 export function Editor() {
   const { id } = useParams();
   const { user } = useAuth();
-  const { t } = useLanguage();
+  const { language, t } = useLanguage();
   const { playSound } = useCafe();
   const navigate = useNavigate();
 
@@ -30,11 +35,51 @@ export function Editor() {
   const [mobileCluePanel, setMobileCluePanel] = useState<'across' | 'down'>('across');
   const [saving, setSaving] = useState(false);
   const [title, setTitle] = useState('');
+  const [statusMessage, setStatusMessage] = useState<string | null>(null);
+  const [statusTone, setStatusTone] = useState<'success' | 'error' | 'info'>('info');
+  const [undoStack, setUndoStack] = useState<EditorSnapshot[]>([]);
+  const [redoStack, setRedoStack] = useState<EditorSnapshot[]>([]);
+  const [isDirty, setIsDirty] = useState(false);
+  const hasLoadedRef = useRef(false);
+  const autoSaveTimerRef = useRef<number | null>(null);
 
   const triggerHaptic = useCallback((pattern: number | number[]) => {
     if (typeof navigator === 'undefined' || typeof navigator.vibrate !== 'function') return;
     navigator.vibrate(pattern);
   }, []);
+
+  const setStatus = useCallback((message: string, tone: 'success' | 'error' | 'info' = 'info') => {
+    setStatusMessage(message);
+    setStatusTone(tone);
+  }, []);
+
+  useEffect(() => {
+    if (!statusMessage) return;
+    const timeoutId = window.setTimeout(() => setStatusMessage(null), 3600);
+    return () => window.clearTimeout(timeoutId);
+  }, [statusMessage]);
+
+  useEffect(() => {
+    return () => {
+      if (autoSaveTimerRef.current) {
+        window.clearTimeout(autoSaveTimerRef.current);
+      }
+    };
+  }, []);
+
+  const cloneBoard = useCallback((source: BoardState): BoardState => ({
+    ...source,
+    grid: source.grid.map((cell) => ({ ...cell })),
+    clues: {
+      across: source.clues.across.map((clue) => ({ ...clue })),
+      down: source.clues.down.map((clue) => ({ ...clue })),
+    },
+  }), []);
+
+  const createSnapshot = useCallback((sourceBoard: BoardState, sourceTitle: string): EditorSnapshot => ({
+    board: cloneBoard(sourceBoard),
+    title: sourceTitle,
+  }), [cloneBoard]);
 
   useEffect(() => {
     if (!id || !user) return;
@@ -53,6 +98,10 @@ export function Editor() {
           if (parsed) {
             setBoard(parsed);
           }
+          setUndoStack([]);
+          setRedoStack([]);
+          setIsDirty(false);
+          hasLoadedRef.current = true;
         }
       } catch (err) {
         handleFirestoreError(err, 'get', `/crosswords/${id}`);
@@ -63,6 +112,7 @@ export function Editor() {
 
   const save = useCallback(async (currentBoard: BoardState, currentTitle: string, isPublished?: boolean) => {
     if (!id || !user) return;
+    let success = true;
     setSaving(true);
     try {
       const answersHash = computeAnswersHash(currentBoard);
@@ -81,15 +131,17 @@ export function Editor() {
       try {
         await updateDoc(doc(db, 'crosswords', id), updates);
       } catch (err) {
+        success = false;
         handleFirestoreError(err, 'update', `/crosswords/${id}`);
       }
-      if (isPublished !== undefined) {
+      if (success && isPublished !== undefined) {
         setCw(prev => prev ? { ...prev, isPublished } : prev);
       }
     } finally {
       setSaving(false);
       playSound('save');
     }
+    return success;
   }, [id, user, playSound]);
 
   const getCell = (x: number, y: number) => board?.grid.find(c => c.x === x && c.y === y);
@@ -106,8 +158,9 @@ export function Editor() {
     });
     
     const totalCells = board.width * board.height;
-    const playCells = totalCells - hiddenCount;
-    const blockPercentage = playCells > 0 ? Math.round((blockCount / playCells) * 100) : 0;
+    const visibleCells = totalCells - hiddenCount;
+    const playableCells = board.grid.filter(c => !c.isBlock && !c.isHidden).length;
+    const blockPercentage = visibleCells > 0 ? Math.round((blockCount / visibleCells) * 100) : 0;
     
     const emptyClues = [
        ...board.clues.across,
@@ -142,16 +195,53 @@ export function Editor() {
              }
           }
        }
-       isConnected = visited.size === playCells;
+       isConnected = visited.size === playableCells;
     }
 
-    return { blockPercentage, emptyClues, wordCount, letterCount, playCells, isConnected };
+    return { blockPercentage, emptyClues, wordCount, letterCount, playableCells, isConnected };
   }, [board]);
+
+  const getPublishIssues = useCallback(() => {
+    if (!board || !stats) return [];
+
+    const issues: string[] = [];
+    if (!title.trim()) {
+      issues.push(language === 'ru' ? 'Добавьте название перед публикацией' : 'Add a title before publishing');
+    }
+    if (stats.wordCount === 0) {
+      issues.push(language === 'ru' ? 'Добавьте в сетку хотя бы одно слово' : 'Add at least one word to the grid');
+    }
+    if (stats.emptyClues > 0) {
+      issues.push(language === 'ru' ? 'Заполните все подсказки перед публикацией' : 'Fill in all clues before publishing');
+    }
+    if (stats.letterCount < stats.playableCells) {
+      issues.push(language === 'ru' ? 'Заполните все игровые клетки перед публикацией' : 'Fill in all playable cells before publishing');
+    }
+    if (!stats.isConnected) {
+      issues.push(language === 'ru' ? 'Убедитесь, что сетка связная' : 'Make sure the grid is fully connected');
+    }
+    return issues;
+  }, [board, stats, title, language]);
+
+  const buildShareUrl = useCallback(() => {
+    const origin = window.location.origin;
+    const path = window.location.pathname || '/';
+    let basePath = origin;
+    const marker = '/CrosswordStudio';
+    if (path.includes(marker)) {
+      const idx = path.indexOf(marker) + marker.length;
+      basePath = origin + path.substring(0, idx);
+    }
+    return `${basePath}/play/${id}`;
+  }, [id]);
 
   const clearGrid = () => {
     if (!board || !window.confirm(t('clearGrid') + '?')) return;
+    setUndoStack((prev) => [...prev.slice(-49), createSnapshot(board, title)]);
+    setRedoStack([]);
     const newGrid = board.grid.map(c => ({...c, value: ''}));
     setBoard({ ...board, grid: newGrid });
+    setIsDirty(true);
   };
 
   const getWordBounds = React.useCallback((x: number, y: number, dir: 'across' | 'down') => {
@@ -188,6 +278,40 @@ export function Editor() {
   }, [direction]);
 
   if (!board) return <div className="p-8 text-center animate-pulse font-body text-cafe-espresso/60">{t('loadingEditor')}</div>;
+
+  const currentCell = selectedCell ? getCell(selectedCell.x, selectedCell.y) : null;
+  const selectedLabel = selectedCell
+    ? `${language === 'ru' ? 'Строка' : 'Row'} ${selectedCell.y + 1} • ${language === 'ru' ? 'Колонка' : 'Col'} ${selectedCell.x + 1}`
+    : null;
+
+  const commitBoardChange = (nextBoard: BoardState) => {
+    setUndoStack((prev) => [...prev.slice(-49), createSnapshot(board, title)]);
+    setRedoStack([]);
+    setBoard(nextBoard);
+    setIsDirty(true);
+  };
+
+  const handleUndo = () => {
+    if (undoStack.length === 0) return;
+    const previous = undoStack[undoStack.length - 1];
+    setUndoStack((prev) => prev.slice(0, -1));
+    setRedoStack((prev) => [...prev.slice(-49), createSnapshot(board, title)]);
+    setBoard(cloneBoard(previous.board));
+    setTitle(previous.title);
+    setIsDirty(true);
+    setStatus(language === 'ru' ? 'Отменено последнее изменение' : 'Reverted the latest change', 'info');
+  };
+
+  const handleRedo = () => {
+    if (redoStack.length === 0) return;
+    const next = redoStack[redoStack.length - 1];
+    setRedoStack((prev) => prev.slice(0, -1));
+    setUndoStack((prev) => [...prev.slice(-49), createSnapshot(board, title)]);
+    setBoard(cloneBoard(next.board));
+    setTitle(next.title);
+    setIsDirty(true);
+    setStatus(language === 'ru' ? 'Изменение возвращено' : 'Change restored', 'info');
+  };
 
   const handleCellClick = (x: number, y: number) => {
     if (selectedCell?.x === x && selectedCell?.y === y) {
@@ -230,7 +354,7 @@ export function Editor() {
       setSelectedCell(null);
     }
     
-    setBoard(newBoard);
+    commitBoardChange(newBoard);
   };
 
   const setBlock = (x: number, y: number, isBlock: boolean) => {
@@ -247,7 +371,7 @@ export function Editor() {
     
     let newBoard = { ...board, grid: newGrid };
     newBoard = updateGridNumbers(newBoard);
-    setBoard(newBoard);
+    commitBoardChange(newBoard);
     playSound('block-toggle');
     triggerHaptic([10, 16, 10]);
   };
@@ -266,7 +390,7 @@ export function Editor() {
     
     let newBoard = { ...board, grid: newGrid };
     newBoard = updateGridNumbers(newBoard);
-    setBoard(newBoard);
+    commitBoardChange(newBoard);
   };
 
   const setLetter = (x: number, y: number, letter: string) => {
@@ -277,7 +401,7 @@ export function Editor() {
       }
       return c;
     });
-    setBoard({ ...board, grid: newGrid });
+    commitBoardChange({ ...board, grid: newGrid });
     if (letter) {
       playSound('letter-input');
       triggerHaptic(8);
@@ -285,6 +409,22 @@ export function Editor() {
   };
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
+    if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'z') {
+      e.preventDefault();
+      if (e.shiftKey) {
+        handleRedo();
+      } else {
+        handleUndo();
+      }
+      return;
+    }
+
+    if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'y') {
+      e.preventDefault();
+      handleRedo();
+      return;
+    }
+
     if (!selectedCell) return;
     const cell = getCell(selectedCell.x, selectedCell.y);
     if (!cell) return;
@@ -344,8 +484,104 @@ export function Editor() {
     newBoard.clues[type] = newBoard.clues[type].map(c => 
       c.number === num ? { ...c, text } : c
     );
+    setUndoStack((prev) => [...prev.slice(-49), createSnapshot(board, title)]);
+    setRedoStack([]);
     setBoard(newBoard);
+    setIsDirty(true);
   };
+
+  const handleSaveClick = async () => {
+    const success = await save(board, title);
+    if (success) {
+      setIsDirty(false);
+    }
+    setStatus(
+      success
+        ? (language === 'ru' ? 'Кроссворд сохранён' : 'Crossword saved')
+        : (language === 'ru' ? 'Не удалось сохранить кроссворд' : 'Could not save the crossword'),
+      success ? 'success' : 'error'
+    );
+  };
+
+  const handlePublishClick = async () => {
+    const nextPublished = !cw?.isPublished;
+    if (nextPublished) {
+      const issues = getPublishIssues();
+      if (issues.length > 0) {
+        setStatus(issues[0], 'error');
+        return;
+      }
+    }
+
+    const success = await save(board, title, nextPublished);
+    if (!success) {
+      setStatus(language === 'ru' ? 'Не удалось опубликовать кроссворд' : 'Could not publish the crossword', 'error');
+      return;
+    }
+
+    setStatus(
+      nextPublished
+        ? (language === 'ru' ? 'Кроссворд опубликован' : 'Crossword published')
+        : (language === 'ru' ? 'Кроссворд сохранён как черновик' : 'Crossword saved as draft'),
+      'success'
+    );
+  };
+
+  const handleShareClick = async () => {
+    const issues = getPublishIssues();
+    if (issues.length > 0) {
+      setStatus(issues[0], 'error');
+      return;
+    }
+
+    const needsPublish = !cw?.isPublished;
+    const success = await save(board, title, needsPublish ? true : undefined);
+    if (!success) {
+      setStatus(
+        language === 'ru' ? 'Не удалось опубликовать кроссворд' : 'Could not publish the crossword',
+        'error'
+      );
+      return;
+    }
+
+    try {
+      await navigator.clipboard.writeText(buildShareUrl());
+      setStatus(
+        needsPublish
+          ? (language === 'ru' ? 'Кроссворд опубликован, ссылка скопирована' : 'Published and share link copied')
+          : (language === 'ru' ? 'Ссылка скопирована' : 'Share link copied'),
+        'success'
+      );
+    } catch (error) {
+      console.error(error);
+      setStatus(
+        language === 'ru' ? 'Не удалось скопировать ссылку' : 'Could not copy the share link',
+        'error'
+      );
+    }
+  };
+
+  useEffect(() => {
+    if (!hasLoadedRef.current || !board || !isDirty) return;
+    if (autoSaveTimerRef.current) {
+      window.clearTimeout(autoSaveTimerRef.current);
+    }
+    autoSaveTimerRef.current = window.setTimeout(async () => {
+      const success = await save(board, title);
+      if (success) {
+        setIsDirty(false);
+        setStatus(language === 'ru' ? 'Черновик автосохранён' : 'Draft autosaved', 'info');
+      } else {
+        setStatus(language === 'ru' ? 'Автосохранение не удалось' : 'Autosave failed', 'error');
+      }
+    }, 1400);
+
+    return () => {
+      if (autoSaveTimerRef.current) {
+        window.clearTimeout(autoSaveTimerRef.current);
+      }
+    };
+  }, [board, title, isDirty, save, language, setStatus]);
 
   return (
     <div
@@ -366,7 +602,10 @@ export function Editor() {
           <div className="h-5 w-px bg-[#8bab84]/35" />
           <input
             value={title}
-            onChange={(e) => setTitle(e.target.value)}
+            onChange={(e) => {
+              setTitle(e.target.value);
+              setIsDirty(true);
+            }}
             onKeyDown={e => e.stopPropagation()}
             placeholder={t('untitled')}
             className="text-lg sm:text-xl font-display font-bold text-[#edf2e3] bg-transparent outline-none py-1 rounded px-2 transition-all placeholder:text-[#aeb9a4]/55 w-48 sm:w-64"
@@ -390,6 +629,26 @@ export function Editor() {
         </div>
 
         <div className="flex items-center gap-2 sm:gap-3">
+          <div className="hidden md:flex items-center gap-2">
+            <motion.button
+              whileTap={{ scale: 0.96 }}
+              onClick={handleUndo}
+              disabled={undoStack.length === 0}
+              className="flex items-center gap-2 px-3 py-2 text-[#dce6d4]/70 hover:text-[#f0f4e9] hover:bg-[#6d8968]/20 rounded-sm font-body text-sm transition-all disabled:opacity-35 disabled:hover:bg-transparent"
+              title={language === 'ru' ? 'Отменить' : 'Undo'}
+            >
+              <Undo2 size={16} />
+            </motion.button>
+            <motion.button
+              whileTap={{ scale: 0.96 }}
+              onClick={handleRedo}
+              disabled={redoStack.length === 0}
+              className="flex items-center gap-2 px-3 py-2 text-[#dce6d4]/70 hover:text-[#f0f4e9] hover:bg-[#6d8968]/20 rounded-sm font-body text-sm transition-all disabled:opacity-35 disabled:hover:bg-transparent"
+              title={language === 'ru' ? 'Вернуть' : 'Redo'}
+            >
+              <Redo2 size={16} />
+            </motion.button>
+          </div>
           <motion.button
             whileTap={{ scale: 0.96 }}
             onClick={clearGrid}
@@ -401,7 +660,7 @@ export function Editor() {
 
           <motion.button
             whileTap={{ scale: 0.97 }}
-            onClick={() => save(board, title)}
+            onClick={handleSaveClick}
             className="flex items-center gap-2 px-3 sm:px-4 py-2 bg-[linear-gradient(120deg,rgba(79,109,75,0.5),rgba(24,35,24,0.72))] border border-[#8bab84]/36 text-[#eff5e5] rounded-sm font-subhead font-semibold text-sm transition-all"
           >
             <Save size={16} className={saving ? 'animate-pulse text-[#d3e2c1]' : 'text-[#d8e6c7]'} />
@@ -426,31 +685,19 @@ export function Editor() {
             onClick={() => {
               playSound('save');
               triggerHaptic(10);
-              save(board, title);
-              // Build robust share URL that respects hosting base path (e.g. subpath like /CrosswordStudio)
-              const origin = window.location.origin;
-              const path = window.location.pathname || '/';
-              let basePath = origin;
-              const marker = '/CrosswordStudio';
-              if (path.includes(marker)) {
-                const idx = path.indexOf(marker) + marker.length;
-                basePath = origin + path.substring(0, idx);
-              }
-              const shareUrl = `${basePath}/play/${id}`;
-              navigator.clipboard.writeText(shareUrl);
-              alert('Link copied to clipboard!');
+              void handleShareClick();
             }}
             className="hidden sm:flex items-center gap-2 px-4 py-2 bg-[#556a4f]/42 text-[#e9f1df] border border-[#9db897]/35 rounded-sm font-subhead font-semibold text-sm transition-all"
           >
             <Share2 size={16} />
-            Share Link
+            {language === 'ru' ? 'Поделиться' : 'Share Link'}
           </motion.button>
 
           <motion.button
             whileTap={{ scale: 0.97 }}
             onClick={() => {
               triggerHaptic([10, 14, 10]);
-              save(board, title, !cw?.isPublished);
+              void handlePublishClick();
             }}
             className={clsx(
               'flex items-center gap-2 px-3 sm:px-4 py-2 rounded-sm font-subhead font-semibold text-sm transition-all',
@@ -462,6 +709,37 @@ export function Editor() {
             {cw?.isPublished ? t('published') : t('publish')}
           </motion.button>
 </div>
+      </div>
+
+      {statusMessage && (
+        <div
+          className={clsx(
+            'mx-4 sm:mx-6 mt-3 rounded-sm border px-4 py-2 text-sm font-body relative z-20',
+            statusTone === 'success' && 'border-[#8bab84]/35 bg-[#2d4230]/82 text-[#edf4e4]',
+            statusTone === 'error' && 'border-[#91634c]/45 bg-[#4b3127]/85 text-[#f3d7c6]',
+            statusTone === 'info' && 'border-[#c4b79f]/28 bg-[#2e3229]/78 text-[#e9e2d3]'
+          )}
+        >
+          {statusMessage}
+        </div>
+      )}
+
+      <div className="mx-4 sm:mx-6 mt-3 flex flex-wrap items-center gap-2 relative z-20">
+        <div className={clsx(
+          'rounded-sm border px-3 py-1.5 text-xs font-mono',
+          isDirty ? 'border-[#c8a96c]/45 bg-[#3f3524]/75 text-[#f3dfb4]' : 'border-[#8bab84]/30 bg-[#283629]/72 text-[#d8e6c7]'
+        )}>
+          {isDirty
+            ? (language === 'ru' ? 'Есть несохранённые изменения' : 'Unsaved changes')
+            : (language === 'ru' ? 'Все изменения сохранены' : 'All changes saved')}
+        </div>
+        {!cw?.isPublished && stats && (
+          <div className="rounded-sm border border-[#8bab84]/28 bg-[#243126]/72 px-3 py-1.5 text-xs font-body text-[#dce6d4]/80">
+            {language === 'ru'
+              ? `Проверок перед публикацией: ${getPublishIssues().length === 0 ? 'всё готово' : getPublishIssues().length}`
+              : `Publish checks: ${getPublishIssues().length === 0 ? 'ready' : getPublishIssues().length}`}
+          </div>
+        )}
       </div>
 
 <div className="flex-1 overflow-hidden flex flex-col xl:flex-row p-0 sm:p-4 md:p-6 gap-4 xl:gap-6 max-w-[1700px] mx-auto w-full relative z-10 xl:items-stretch h-screen">
@@ -478,6 +756,7 @@ export function Editor() {
               direction={direction}
               allWordBounds={allWordBounds}
               onCellClick={handleCellClick}
+              onCellChange={setLetter}
               editable={true}
             />
           </motion.div>
@@ -507,6 +786,62 @@ export function Editor() {
                 <div className="col-span-2 flex items-center gap-2 text-[#f1cfbc] bg-[#5c4237]/32 p-2 rounded-sm border border-[#91634c]/35">
                   <AlertTriangle size={14} />
                   <span>{t('connectedWarning')}</span>
+                </div>
+              )}
+              {selectedLabel && currentCell && (
+                <div className="col-span-2 rounded-sm border border-[#8bab84]/24 bg-[rgba(21,29,21,0.42)] px-3 py-2.5">
+                  <div className="flex items-center justify-between gap-3">
+                    <div>
+                      <div className="font-subhead text-[11px] uppercase tracking-[0.12em] text-[#b3cda0]/80">
+                        {language === 'ru' ? 'Выбрана клетка' : 'Selected cell'}
+                      </div>
+                      <div className="mt-1 text-sm text-[#edf4e4]">{selectedLabel}</div>
+                    </div>
+                    <div className="text-right text-[11px] font-mono text-[#dce6d4]/60">
+                      {currentCell.isHidden
+                        ? (language === 'ru' ? 'Пустота' : 'Void')
+                        : currentCell.isBlock
+                          ? (language === 'ru' ? 'Блок' : 'Block')
+                          : (currentCell.value || (language === 'ru' ? 'Пусто' : 'Empty'))}
+                    </div>
+                  </div>
+                  <div className="mt-3 grid grid-cols-3 gap-2">
+                    <button
+                      type="button"
+                      onClick={() => setBlock(selectedCell.x, selectedCell.y, !currentCell.isBlock)}
+                      className={clsx(
+                        'flex items-center justify-center gap-2 rounded-sm px-3 py-2 text-xs font-subhead font-semibold transition-all',
+                        currentCell.isBlock
+                          ? 'bg-[#5c4237]/34 text-[#f3d7c6] border border-[#91634c]/35'
+                          : 'bg-[#314231]/70 text-[#edf4e4] border border-[#8bab84]/24'
+                      )}
+                    >
+                      <Square size={14} />
+                      {language === 'ru' ? 'Блок' : 'Block'}
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setHidden(selectedCell.x, selectedCell.y, !currentCell.isHidden)}
+                      className={clsx(
+                        'flex items-center justify-center gap-2 rounded-sm px-3 py-2 text-xs font-subhead font-semibold transition-all',
+                        currentCell.isHidden
+                          ? 'bg-[#5c4237]/34 text-[#f3d7c6] border border-[#91634c]/35'
+                          : 'bg-[#314231]/70 text-[#edf4e4] border border-[#8bab84]/24'
+                      )}
+                    >
+                      <EyeOff size={14} />
+                      {language === 'ru' ? 'Пустота' : 'Void'}
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setLetter(selectedCell.x, selectedCell.y, '')}
+                      disabled={currentCell.isBlock || currentCell.isHidden || !currentCell.value}
+                      className="flex items-center justify-center gap-2 rounded-sm px-3 py-2 text-xs font-subhead font-semibold transition-all bg-[#314231]/70 text-[#edf4e4] border border-[#8bab84]/24 disabled:opacity-35"
+                    >
+                      <Eraser size={14} />
+                      {language === 'ru' ? 'Очистить' : 'Clear'}
+                    </button>
+                  </div>
                 </div>
               )}
             </div>
