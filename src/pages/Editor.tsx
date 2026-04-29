@@ -458,7 +458,16 @@ export function Editor() {
               playSound('save');
               triggerHaptic(10);
               save(board, title);
-              const shareUrl = `${window.location.origin}/play/${id}`;
+              // Build robust share URL that respects hosting base path (e.g. subpath like /CrosswordStudio)
+              const origin = window.location.origin;
+              const path = window.location.pathname || '/';
+              let basePath = origin;
+              const marker = '/CrosswordStudio';
+              if (path.includes(marker)) {
+                const idx = path.indexOf(marker) + marker.length;
+                basePath = origin + path.substring(0, idx);
+              }
+              const shareUrl = `${basePath}/play/${id}`;
               navigator.clipboard.writeText(shareUrl);
               alert('Link copied to clipboard!');
             }}

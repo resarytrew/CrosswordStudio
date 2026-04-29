@@ -1,4 +1,10 @@
 {
+  "rewrites": [
+    {
+      "source": "/(.*)",
+      "destination": "/index.html"
+    }
+  ],
   "buildCommand": "npm install && npm run build",
   "installCommand": "npm install"
 }
