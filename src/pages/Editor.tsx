@@ -231,6 +231,12 @@ export function Editor() {
     if (path.includes(marker)) {
       const idx = path.indexOf(marker) + marker.length;
       basePath = origin + path.substring(0, idx);
+    } else if (path.length > 1) {
+      // Fallback for subpath deployments
+      const first = path.split('/').filter(Boolean)[0];
+      if (first && first.length > 0) {
+        basePath = origin + '/' + first;
+      }
     }
     return `${basePath}/play/${id}`;
   }, [id]);
