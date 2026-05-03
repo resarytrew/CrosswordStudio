@@ -8,8 +8,18 @@ service cloud.firestore {
 
     function isSignedIn() { return request.auth != null; }
     function isValidId(id) { return id is string && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$'); }
+    function isValidSlug(slug) {
+      return slug is string && slug.size() >= 6 && slug.size() <= 16 && slug.matches('^[a-z0-9]+$');
+    }
     function incoming() { return request.resource.data; }
     function existing() { return resource.data; }
+
+function crosswordReadable(data) {
+      return data.isPublished == true
+        || data.visibility == 'link'
+        || data.visibility == 'public'
+        || (isSignedIn() && data.authorId == request.auth.uid);
+    }
 
 function isValidCrossword(data) {
       return data.keys().hasAll(['authorId', 'title', 'boardState', 'answersHash', 'createdAt', 'updatedAt', 'isPublished'])
@@ -20,7 +30,11 @@ function isValidCrossword(data) {
         && data.createdAt is number && data.createdAt > 0
         && data.updatedAt is number && data.updatedAt > 0
         && data.isPublished is bool
-        && (data.isTemplate == null || data.isTemplate is bool);
+        && (data.isTemplate == null || data.isTemplate is bool)
+        && (data.slug == null || isValidSlug(data.slug))
+        && (data.visibility == null || data.visibility in ['private', 'link', 'public'])
+        && (data.difficulty == null || data.difficulty in ['easy', 'medium', 'hard'])
+        && (data.authorDisplayName == null || (data.authorDisplayName is string && data.authorDisplayName.size() <= 120));
     }
 
 function isValidCrosswordUpdate(data, old) {
@@ -32,22 +46,44 @@ function isValidCrosswordUpdate(data, old) {
         && data.answersHash is string && data.answersHash.size() <= 64
         && data.updatedAt is number && data.updatedAt >= old.updatedAt
         && data.isPublished is bool
-        && (data.isTemplate == null || data.isTemplate is bool);
+        && (data.isTemplate == null || data.isTemplate is bool)
+        && (data.slug == null || isValidSlug(data.slug))
+        && (data.visibility == null || data.visibility in ['private', 'link', 'public'])
+        && (data.difficulty == null || data.difficulty in ['easy', 'medium', 'hard'])
+        && (data.authorDisplayName == null || (data.authorDisplayName is string && data.authorDisplayName.size() <= 120));
     }
 
     match /crosswords/{crosswordId} {
-      allow get: if isValidId(crosswordId) && (
-        (existing().isPublished == true) || 
-        (isSignedIn() && existing().authorId == request.auth.uid)
-      );
+      allow get: if isValidId(crosswordId) && crosswordReadable(existing());
 
-      allow list: if (resource.data.isPublished == true) || (isSignedIn() && resource.data.authorId == request.auth.uid);
+      allow list: if (resource.data.isPublished == true)
+        || (resource.data.visibility == 'public')
+        || (isSignedIn() && resource.data.authorId == request.auth.uid);
 
       allow create: if isValidId(crosswordId) && isSignedIn() && isValidCrossword(incoming());
       
-      allow update: if isValidId(crosswordId) && isSignedIn() && existing().authorId == request.auth.uid;
+      allow update: if isValidId(crosswordId) && isSignedIn() && existing().authorId == request.auth.uid
+        && isValidCrosswordUpdate(incoming(), existing());
 
       allow delete: if isValidId(crosswordId) && isSignedIn() && existing().authorId == request.auth.uid;
+    }
+
+    match /shareLinks/{slug} {
+      allow get: if isValidSlug(slug);
+      allow list: if false;
+      allow create: if isSignedIn()
+        && isValidSlug(slug)
+        && incoming().keys().hasOnly(['crosswordId'])
+        && incoming().crosswordId is string
+        && isValidId(incoming().crosswordId)
+        && exists(/databases/$(database)/documents/crosswords/$(incoming().crosswordId))
+        && get(/databases/$(database)/documents/crosswords/$(incoming().crosswordId)).data.authorId == request.auth.uid;
+      allow delete: if isSignedIn()
+        && isValidSlug(slug)
+        && resource.data.crosswordId is string
+        && exists(/databases/$(database)/documents/crosswords/$(resource.data.crosswordId))
+        && get(/databases/$(database)/documents/crosswords/$(resource.data.crosswordId)).data.authorId == request.auth.uid;
+      allow update: if false;
     }
 
     function isValidProgress(data) {

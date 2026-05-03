@@ -1,16 +1,20 @@
 import React, { useEffect, useState, useCallback, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
+import { toast } from 'sonner';
 import { db, handleFirestoreError } from '../lib/firebase';
-import { doc, getDoc, updateDoc } from 'firebase/firestore';
+import { deleteField, doc, getDoc, updateDoc } from 'firebase/firestore';
 import { useAuth } from '../contexts/AuthContext';
 import { useLanguage } from '../contexts/LanguageContext';
 import { useCafe } from '../contexts/CafeContext';
-import { BoardState, Crossword, GridCell } from '../types';
+import { BoardState, Crossword, GridCell, type CrosswordDifficulty, type CrosswordVisibility } from '../types';
 import { updateGridNumbers } from '../lib/gridUtils';
 import { computeAnswersHash } from '../lib/crypto';
 import { parseBoardState } from '../lib/boardParser';
-import { Save, Share2, ArrowLeft, ArrowRight, ArrowDown, Trash2, LayoutGrid, Hash, CheckSquare, AlertTriangle, Image, Undo2, Redo2, Eraser, Square, EyeOff } from 'lucide-react';
+import { Save, Share2, ArrowLeft, ArrowRight, ArrowDown, Trash2, LayoutGrid, Hash, CheckSquare, AlertTriangle, Image, Undo2, Redo2, Eraser, Square, EyeOff, Globe, Link2, Lock, Copy } from 'lucide-react';
 import { BookSpine } from '../components/CafeAnimations';
+import { useConfirm } from '../components/ConfirmDialog';
+import { allocateUniqueShareSlug, removeShareLink, upsertShareLink } from '../lib/shareLinkWrites';
+import { playUrl, previewUrl } from '../lib/shareUrls';
 import { CanvasGrid } from '../components/CanvasGrid';
 import clsx from 'clsx';
 import { motion } from 'framer-motion';
@@ -26,6 +30,7 @@ export function Editor() {
   const { language, t } = useLanguage();
   const { playSound } = useCafe();
   const navigate = useNavigate();
+  const confirm = useConfirm();
 
   const [cw, setCw] = useState<Crossword | null>(null);
   const [board, setBoard] = useState<BoardState | null>(null);
@@ -35,29 +40,20 @@ export function Editor() {
   const [mobileCluePanel, setMobileCluePanel] = useState<'across' | 'down'>('across');
   const [saving, setSaving] = useState(false);
   const [title, setTitle] = useState('');
-  const [statusMessage, setStatusMessage] = useState<string | null>(null);
-  const [statusTone, setStatusTone] = useState<'success' | 'error' | 'info'>('info');
+  const [visibilitySetting, setVisibilitySetting] = useState<CrosswordVisibility>('private');
+  const [difficultySetting, setDifficultySetting] = useState<CrosswordDifficulty>('medium');
   const [undoStack, setUndoStack] = useState<EditorSnapshot[]>([]);
   const [redoStack, setRedoStack] = useState<EditorSnapshot[]>([]);
   const [isDirty, setIsDirty] = useState(false);
   const hasLoadedRef = useRef(false);
   const autoSaveTimerRef = useRef<number | null>(null);
+  /** Prefer slug over UUID for clipboard links after save */
+  const shareLinkKeyRef = useRef('');
 
   const triggerHaptic = useCallback((pattern: number | number[]) => {
     if (typeof navigator === 'undefined' || typeof navigator.vibrate !== 'function') return;
     navigator.vibrate(pattern);
   }, []);
-
-  const setStatus = useCallback((message: string, tone: 'success' | 'error' | 'info' = 'info') => {
-    setStatusMessage(message);
-    setStatusTone(tone);
-  }, []);
-
-  useEffect(() => {
-    if (!statusMessage) return;
-    const timeoutId = window.setTimeout(() => setStatusMessage(null), 3600);
-    return () => window.clearTimeout(timeoutId);
-  }, [statusMessage]);
 
   useEffect(() => {
     return () => {
@@ -94,6 +90,9 @@ export function Editor() {
           }
           setCw(data);
           setTitle(data.title);
+          setVisibilitySetting(data.visibility ?? (data.isPublished ? 'link' : 'private'));
+          setDifficultySetting(data.difficulty ?? 'medium');
+          shareLinkKeyRef.current = data.slug ?? id ?? '';
           const parsed = parseBoardState(data.boardState);
           if (parsed) {
             setBoard(parsed);
@@ -110,39 +109,85 @@ export function Editor() {
     load();
   }, [id, user, navigate]);
 
-  const save = useCallback(async (currentBoard: BoardState, currentTitle: string, isPublished?: boolean) => {
-    if (!id || !user) return;
+  const save = useCallback(async (currentBoard: BoardState, currentTitle: string, publishOverride?: boolean) => {
+    if (!id || !user) return false;
     let success = true;
     setSaving(true);
     try {
       const answersHash = computeAnswersHash(currentBoard);
-      const updates: Partial<Crossword> = {
+      let nextPublished = cw?.isPublished ?? false;
+      if (publishOverride !== undefined) nextPublished = publishOverride;
+      if (visibilitySetting === 'private') nextPublished = false;
+
+      const shareable =
+        visibilitySetting === 'link' || visibilitySetting === 'public' || nextPublished;
+
+      let nextSlug = cw?.slug;
+      try {
+        if (shareable && !nextSlug) {
+          nextSlug = await allocateUniqueShareSlug();
+        }
+        if (!shareable && cw?.slug) {
+          await removeShareLink(cw.slug);
+          nextSlug = undefined;
+        }
+      } catch (e) {
+        console.error(e);
+        toast.error(language === 'ru' ? 'Не удалось обновить короткую ссылку' : 'Could not update share link');
+        success = false;
+        return false;
+      }
+
+      const updates: Record<string, unknown> = {
         title: currentTitle,
         boardState: currentBoard,
         answersHash,
-        updatedAt: Date.now()
+        updatedAt: Date.now(),
+        visibility: visibilitySetting,
+        difficulty: difficultySetting,
+        authorDisplayName: user.displayName ?? '',
+        isPublished: nextPublished,
+        slug: nextSlug ?? deleteField(),
       };
-      if (isPublished !== undefined) {
-        updates.isPublished = isPublished;
-        if (isPublished) {
-          playSound('achievement');
-        }
+
+      if (publishOverride !== undefined && publishOverride) {
+        playSound('achievement');
       }
+
       try {
         await updateDoc(doc(db, 'crosswords', id), updates);
+        if (nextSlug) {
+          const ok = await upsertShareLink(nextSlug, id);
+          if (!ok) success = false;
+        }
+        const linkKey = nextSlug ?? cw?.slug ?? id ?? '';
+        shareLinkKeyRef.current = linkKey;
+        setCw((prev) =>
+          prev
+            ? {
+                ...prev,
+                title: currentTitle,
+                boardState: currentBoard,
+                answersHash,
+                updatedAt: Date.now(),
+                slug: nextSlug,
+                visibility: visibilitySetting,
+                difficulty: difficultySetting,
+                isPublished: nextPublished,
+                authorDisplayName: user.displayName ?? '',
+              }
+            : prev
+        );
       } catch (err) {
         success = false;
         handleFirestoreError(err, 'update', `/crosswords/${id}`);
-      }
-      if (success && isPublished !== undefined) {
-        setCw(prev => prev ? { ...prev, isPublished } : prev);
       }
     } finally {
       setSaving(false);
       playSound('save');
     }
     return success;
-  }, [id, user, playSound]);
+  }, [id, user, playSound, cw, visibilitySetting, difficultySetting, language]);
 
   const getCell = (x: number, y: number) => board?.grid.find(c => c.x === x && c.y === y);
 
@@ -223,26 +268,16 @@ export function Editor() {
     return issues;
   }, [board, stats, title, language]);
 
-  const buildShareUrl = useCallback(() => {
-    const origin = window.location.origin;
-    const path = window.location.pathname || '/';
-    let basePath = origin;
-    const marker = '/CrosswordStudio';
-    if (path.includes(marker)) {
-      const idx = path.indexOf(marker) + marker.length;
-      basePath = origin + path.substring(0, idx);
-    } else if (path.length > 1) {
-      // Fallback for subpath deployments
-      const first = path.split('/').filter(Boolean)[0];
-      if (first && first.length > 0) {
-        basePath = origin + '/' + first;
-      }
-    }
-    return `${basePath}/play/${id}`;
-  }, [id]);
-
-  const clearGrid = () => {
-    if (!board || !window.confirm(t('clearGrid') + '?')) return;
+  const clearGrid = async () => {
+    if (!board) return;
+    const ok = await confirm({
+      title: language === 'ru' ? 'Очистить сетку?' : 'Clear grid?',
+      message: `${t('clearGrid')}?`,
+      confirmLabel: language === 'ru' ? 'Очистить' : 'Clear',
+      cancelLabel: language === 'ru' ? 'Отмена' : 'Cancel',
+      destructive: true,
+    });
+    if (!ok) return;
     setUndoStack((prev) => [...prev.slice(-49), createSnapshot(board, title)]);
     setRedoStack([]);
     const newGrid = board.grid.map(c => ({...c, value: ''}));
@@ -292,9 +327,9 @@ export function Editor() {
       const success = await save(board, title);
       if (success) {
         setIsDirty(false);
-        setStatus(language === 'ru' ? 'Черновик автосохранён' : 'Draft autosaved', 'info');
+        toast.info(language === 'ru' ? 'Черновик автосохранён' : 'Draft autosaved');
       } else {
-        setStatus(language === 'ru' ? 'Автосохранение не удалось' : 'Autosave failed', 'error');
+        toast.error(language === 'ru' ? 'Автосохранение не удалось' : 'Autosave failed');
       }
     }, 1400);
 
@@ -303,7 +338,7 @@ export function Editor() {
         window.clearTimeout(autoSaveTimerRef.current);
       }
     };
-  }, [board, title, isDirty, save, language, setStatus]);
+  }, [board, title, isDirty, save, language]);
 
   if (!board) return <div className="p-8 text-center animate-pulse font-body text-cafe-espresso/60">{t('loadingEditor')}</div>;
 
@@ -327,7 +362,7 @@ export function Editor() {
     setBoard(cloneBoard(previous.board));
     setTitle(previous.title);
     setIsDirty(true);
-    setStatus(language === 'ru' ? 'Отменено последнее изменение' : 'Reverted the latest change', 'info');
+    toast.info(language === 'ru' ? 'Отменено последнее изменение' : 'Reverted the latest change');
   };
 
   const handleRedo = () => {
@@ -338,7 +373,7 @@ export function Editor() {
     setBoard(cloneBoard(next.board));
     setTitle(next.title);
     setIsDirty(true);
-    setStatus(language === 'ru' ? 'Изменение возвращено' : 'Change restored', 'info');
+    toast.info(language === 'ru' ? 'Изменение возвращено' : 'Change restored');
   };
 
   const handleCellClick = (x: number, y: number) => {
@@ -522,70 +557,98 @@ export function Editor() {
     const success = await save(board, title);
     if (success) {
       setIsDirty(false);
+      toast.success(language === 'ru' ? 'Кроссворд сохранён' : 'Crossword saved');
+    } else {
+      toast.error(language === 'ru' ? 'Не удалось сохранить кроссворд' : 'Could not save the crossword');
     }
-    setStatus(
-      success
-        ? (language === 'ru' ? 'Кроссворд сохранён' : 'Crossword saved')
-        : (language === 'ru' ? 'Не удалось сохранить кроссворд' : 'Could not save the crossword'),
-      success ? 'success' : 'error'
-    );
   };
 
   const handlePublishClick = async () => {
+    if (visibilitySetting === 'private') {
+      toast.error(
+        language === 'ru'
+          ? 'Для публикации выберите доступ «По ссылке» или «Публичный».'
+          : 'Choose link or public visibility to publish.'
+      );
+      return;
+    }
     const nextPublished = !cw?.isPublished;
     if (nextPublished) {
       const issues = getPublishIssues();
       if (issues.length > 0) {
-        setStatus(issues[0], 'error');
+        toast.error(issues[0]);
         return;
       }
     }
 
     const success = await save(board, title, nextPublished);
     if (!success) {
-      setStatus(language === 'ru' ? 'Не удалось опубликовать кроссворд' : 'Could not publish the crossword', 'error');
+      toast.error(language === 'ru' ? 'Не удалось опубликовать кроссворд' : 'Could not publish the crossword');
       return;
     }
 
-    setStatus(
+    toast.success(
       nextPublished
         ? (language === 'ru' ? 'Кроссворд опубликован' : 'Crossword published')
-        : (language === 'ru' ? 'Кроссворд сохранён как черновик' : 'Crossword saved as draft'),
-      'success'
+        : (language === 'ru' ? 'Кроссворд сохранён как черновик' : 'Crossword saved as draft')
     );
   };
 
   const handleShareClick = async () => {
+    if (visibilitySetting === 'private') {
+      toast.error(
+        language === 'ru'
+          ? 'Включите доступ по ссылке или публичный режим в блоке «Поделиться».'
+          : 'Switch to link or public access in the sharing panel.'
+      );
+      return;
+    }
     const issues = getPublishIssues();
     if (issues.length > 0) {
-      setStatus(issues[0], 'error');
+      toast.error(issues[0]);
       return;
     }
 
     const needsPublish = !cw?.isPublished;
     const success = await save(board, title, needsPublish ? true : undefined);
     if (!success) {
-      setStatus(
-        language === 'ru' ? 'Не удалось опубликовать кроссворд' : 'Could not publish the crossword',
-        'error'
-      );
+      toast.error(language === 'ru' ? 'Не удалось сохранить для ссылки' : 'Could not save for sharing');
       return;
     }
 
     try {
-      await navigator.clipboard.writeText(buildShareUrl());
-      setStatus(
+      await navigator.clipboard.writeText(playUrl(shareLinkKeyRef.current || cw?.slug || id || ''));
+      toast.success(
         needsPublish
-          ? (language === 'ru' ? 'Кроссворд опубликован, ссылка скопирована' : 'Published and share link copied')
-          : (language === 'ru' ? 'Ссылка скопирована' : 'Share link copied'),
-        'success'
+          ? (language === 'ru' ? 'Опубликовано — ссылка на решение скопирована' : 'Published — solve link copied')
+          : (language === 'ru' ? 'Ссылка на решение скопирована' : 'Solve link copied')
       );
     } catch (error) {
       console.error(error);
-      setStatus(
-        language === 'ru' ? 'Не удалось скопировать ссылку' : 'Could not copy the share link',
-        'error'
-      );
+      toast.error(language === 'ru' ? 'Не удалось скопировать ссылку' : 'Could not copy the share link');
+    }
+  };
+
+  const handleCopyPreviewLink = async () => {
+    if (visibilitySetting === 'private') {
+      toast.error(language === 'ru' ? 'Предпросмотр недоступен в режиме «Только владелец».' : 'Preview requires link or public access.');
+      return;
+    }
+    const issues = getPublishIssues();
+    if (issues.length > 0) {
+      toast.error(issues[0]);
+      return;
+    }
+    const success = await save(board, title, !cw?.isPublished ? true : undefined);
+    if (!success) {
+      toast.error(language === 'ru' ? 'Не удалось сохранить карточку' : 'Could not save preview card');
+      return;
+    }
+    try {
+      await navigator.clipboard.writeText(previewUrl(shareLinkKeyRef.current || cw?.slug || id || ''));
+      toast.success(language === 'ru' ? 'Ссылка на страницу превью скопирована' : 'Preview page link copied');
+    } catch {
+      toast.error(language === 'ru' ? 'Не удалось скопировать' : 'Could not copy');
     }
   };
 
@@ -717,18 +780,54 @@ export function Editor() {
 </div>
       </div>
 
-      {statusMessage && (
-        <div
-          className={clsx(
-            'mx-4 sm:mx-6 mt-3 rounded-sm border px-4 py-2 text-sm font-body relative z-20',
-            statusTone === 'success' && 'border-[#8bab84]/35 bg-[#2d4230]/82 text-[#edf4e4]',
-            statusTone === 'error' && 'border-[#91634c]/45 bg-[#4b3127]/85 text-[#f3d7c6]',
-            statusTone === 'info' && 'border-[#c4b79f]/28 bg-[#2e3229]/78 text-[#e9e2d3]'
-          )}
-        >
-          {statusMessage}
+      <div className="mx-4 sm:mx-6 mt-3 flex flex-wrap items-center gap-3 relative z-20 rounded-sm border border-[#8bab84]/26 bg-[rgba(22,33,24,0.72)] px-3 py-2.5 backdrop-blur-sm">
+        <span className="text-[10px] font-subhead uppercase tracking-[0.14em] text-[#b3cda0]/80 shrink-0">{t('editorSharing')}</span>
+        <div className="flex flex-wrap items-center gap-2">
+          <div className="flex items-center gap-1.5 text-xs text-[#dce6d4]/90">
+            <Lock size={14} className="text-[#9eb197]/65 shrink-0" aria-hidden />
+            <select
+              value={visibilitySetting}
+              onChange={(e) => {
+                setVisibilitySetting(e.target.value as CrosswordVisibility);
+                setIsDirty(true);
+              }}
+              className="bg-[rgba(13,22,14,0.55)] border border-[#8bab84]/28 rounded-sm px-2 py-1 font-body outline-none focus-visible:ring-1 focus-visible:ring-[#b8cf9d]"
+            >
+              <option value="private">{t('visibilityPrivate')}</option>
+              <option value="link">{t('visibilityLink')}</option>
+              <option value="public">{t('visibilityPublic')}</option>
+            </select>
+          </div>
+          <div className="flex items-center gap-1.5 text-xs text-[#dce6d4]/90">
+            <Globe size={14} className="text-[#9eb197]/65 shrink-0" aria-hidden />
+            <select
+              value={difficultySetting}
+              onChange={(e) => {
+                setDifficultySetting(e.target.value as CrosswordDifficulty);
+                setIsDirty(true);
+              }}
+              className="bg-[rgba(13,22,14,0.55)] border border-[#8bab84]/28 rounded-sm px-2 py-1 font-body outline-none focus-visible:ring-1 focus-visible:ring-[#b8cf9d]"
+            >
+              <option value="easy">{t('difficultyEasy')}</option>
+              <option value="medium">{t('difficultyMedium')}</option>
+              <option value="hard">{t('difficultyHard')}</option>
+            </select>
+          </div>
+          <div className="flex items-center gap-1 font-mono text-[11px] text-[#c8ddbc]/85 px-2 py-1 rounded-sm bg-[rgba(13,22,14,0.45)] border border-[#8bab84]/22">
+            <Link2 size={12} className="text-[#8bab84]" aria-hidden />
+            <span className="truncate max-w-[120px]">{cw?.slug ?? (language === 'ru' ? 'нет slug' : 'no slug yet')}</span>
+          </div>
+          <motion.button
+            type="button"
+            whileTap={{ scale: 0.97 }}
+            onClick={() => void handleCopyPreviewLink()}
+            className="flex items-center gap-1.5 px-2.5 py-1 rounded-sm border border-[#8bab84]/30 text-[11px] font-subhead text-[#dce6d4]/90 hover:bg-[#6d8968]/18 transition-colors"
+          >
+            <Copy size={13} />
+            {t('copyPreviewLink')}
+          </motion.button>
         </div>
-      )}
+      </div>
 
       <div className="mx-4 sm:mx-6 mt-3 flex flex-wrap items-center gap-2 relative z-20">
         <div className={clsx(

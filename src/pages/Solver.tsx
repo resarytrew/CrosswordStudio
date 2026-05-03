@@ -1,11 +1,13 @@
 import React, { useEffect, useState, useCallback, useRef } from "react";
-import { useNavigate, useParams } from "react-router-dom";
+import { Link, useNavigate, useParams } from "react-router-dom";
 import { db, handleFirestoreError } from "../lib/firebase";
 import { doc, getDoc, setDoc } from "firebase/firestore";
+import { fetchCrosswordBySlugOrId } from "../lib/crosswordResolve";
+import { evaluatePlayAccess } from "../lib/crosswordAccess";
 import { useAuth } from "../contexts/AuthContext";
 import { useLanguage } from "../contexts/LanguageContext";
 import { useCafe } from "../contexts/CafeContext";
-import { BoardState, Crossword, Progress } from "../types";
+import { BoardState, Crossword, Progress, type CrosswordDifficulty } from "../types";
 import { parseBoardState } from "../lib/boardParser";
 import clsx from "clsx";
 import {
@@ -16,6 +18,7 @@ import {
   ChevronLeft,
   ChevronRight,
   Coffee,
+  ExternalLink,
   GripHorizontal,
   Play,
   Trophy,
@@ -24,12 +27,18 @@ import { motion, AnimatePresence } from "framer-motion";
 import { Steam, FloatingParticles, CoffeeBean, ClockTick, SuccessBurst, LampGlow } from "../components/CafeAnimations";
 import { CanvasGrid } from "../components/CanvasGrid";
 import { hashString } from "../lib/crypto";
-
 type SaveState = "idle" | "saving" | "saved" | "error";
 type InkPulse = { x: number; y: number; key: number } | null;
 
+function difficultyShort(d: CrosswordDifficulty | undefined, language: string): string {
+  const mapEn = { easy: "Easy", medium: "Medium", hard: "Hard" };
+  const mapRu = { easy: "Лёгкий", medium: "Средний", hard: "Сложный" };
+  const map = language === "ru" ? mapRu : mapEn;
+  return map[d ?? "medium"];
+}
+
 export function Solver() {
-  const { id } = useParams();
+  const { slugOrId } = useParams();
   const navigate = useNavigate();
   const { user, login } = useAuth();
   const { language, t } = useLanguage();
@@ -49,6 +58,7 @@ export function Solver() {
   const [inkPulse, setInkPulse] = useState<InkPulse>(null);
   const [loadState, setLoadState] = useState<"loading" | "ready" | "unavailable">("loading");
   const [loadErrorMessage, setLoadErrorMessage] = useState("");
+  const [crosswordDocId, setCrosswordDocId] = useState<string | null>(null);
   const clueRefs = useRef<Record<string, HTMLButtonElement | null>>({});
   const saveStateTimerRef = useRef<number | null>(null);
   const inkPulseTimerRef = useRef<number | null>(null);
@@ -84,23 +94,47 @@ export function Solver() {
   }, []);
 
   useEffect(() => {
-    if (!id) return;
+    if (!slugOrId) return;
+    let cancelled = false;
     (async () => {
       setLoadState("loading");
+      setCrosswordDocId(null);
       try {
-        const d = await getDoc(doc(db, "crosswords", id));
-        if (!d.exists()) {
+        const res = await fetchCrosswordBySlugOrId(slugOrId);
+        if (cancelled) return;
+        if (!res) {
           setLoadErrorMessage(
             language === "ru"
-              ? "Этот кроссворд удалён, ещё не опубликован или доступен только автору."
-              : "This crossword was removed, is not published yet, or is available only to its author."
+              ? "Этот кроссворд удалён или ссылка недействительна."
+              : "This crossword was removed or the link is invalid."
           );
           setLoadState("unavailable");
           return;
         }
-        const data = d.data() as Crossword;
-        setCw(data);
-        const parsedBoard = parseBoardState(data.boardState);
+        const access = evaluatePlayAccess(res.crossword, user?.uid);
+        if (access === "sign_in_required") {
+          setCw(res.crossword);
+          setLoadErrorMessage(
+            language === "ru"
+              ? "Этот кроссворд доступен только автору. Войдите в аккаунт."
+              : "This crossword is available only to its author. Please sign in."
+          );
+          setLoadState("unavailable");
+          return;
+        }
+        if (access === "forbidden") {
+          setCw(res.crossword);
+          setLoadErrorMessage(
+            language === "ru"
+              ? "У вас нет доступа к этому кроссворду."
+              : "You do not have access to this crossword."
+          );
+          setLoadState("unavailable");
+          return;
+        }
+        setCw(res.crossword);
+        setCrosswordDocId(res.id);
+        const parsedBoard = parseBoardState(res.crossword.boardState);
         if (!parsedBoard) {
           setLoadErrorMessage(
             language === "ru"
@@ -122,21 +156,25 @@ export function Solver() {
         }
         setLoadState("ready");
       } catch (err) {
-        handleFirestoreError(err, "get", `/crosswords/${id}`);
+        if (cancelled) return;
+        handleFirestoreError(err, "get", `/crosswords/${slugOrId}`);
         setLoadErrorMessage(
           language === "ru"
-            ? "Этот кроссворд ещё не опубликован или доступ к нему ограничен."
-            : "This crossword is not published yet or access to it is restricted."
+            ? "Не удалось загрузить кроссворд."
+            : "Could not load this crossword."
         );
         setLoadState("unavailable");
       }
     })();
-  }, [id, language]);
+    return () => {
+      cancelled = true;
+    };
+  }, [slugOrId, language, user?.uid]);
 
   useEffect(() => {
-    if (!id || !user) return;
+    if (!crosswordDocId || !user) return;
     (async () => {
-      const pid = `${user.uid}_${id}`;
+      const pid = `${user.uid}_${crosswordDocId}`;
       setProgressId(pid);
       try {
         const pr = await getDoc(doc(db, "progress", pid));
@@ -158,7 +196,7 @@ export function Solver() {
         handleFirestoreError(err, "get", `/progress/${pid}`);
       }
     })();
-  }, [id, user]);
+  }, [crosswordDocId, user]);
 
   useEffect(() => {
     if (isCompleted || !cw || !hasStarted) return;
@@ -176,14 +214,14 @@ export function Solver() {
   }, []);
 
   const checkCompletion = useCallback(async () => {
-    if (!board || isCompleted || !user || !id || !hasStarted) return;
+    if (!board || isCompleted || !user || !crosswordDocId || !hasStarted) return;
 
     const totalPlayable = board.grid.filter((c) => !c.isBlock && !c.isHidden).length;
     const filledCount = Object.keys(answers).filter((k) => answers[k] && answers[k] !== "").length;
     if (filledCount < totalPlayable) return;
 
     try {
-      const cwDoc = await getDoc(doc(db, "crosswords", id));
+      const cwDoc = await getDoc(doc(db, "crosswords", crosswordDocId));
       if (!cwDoc.exists()) return;
       const crossword = cwDoc.data() as Crossword;
       const savedHash = crossword.answersHash;
@@ -197,7 +235,7 @@ export function Solver() {
     } catch (error) {
       console.error("Verification failed:", error);
     }
-  }, [answers, board, hasStarted, hashUserAnswers, id, isCompleted, playSound, triggerHaptic, user]);
+  }, [answers, board, crosswordDocId, hasStarted, hashUserAnswers, isCompleted, playSound, triggerHaptic, user]);
 
   useEffect(() => {
     const timeoutId = setTimeout(() => {
@@ -207,14 +245,14 @@ export function Solver() {
   }, [answers, checkCompletion]);
 
   useEffect(() => {
-    if (!id || !user || !progressId || !board || !hasStarted) return;
+    if (!crosswordDocId || !user || !progressId || !board || !hasStarted) return;
 
     const tSave = setTimeout(async () => {
       setSaveState("saving");
       try {
         await setDoc(doc(db, "progress", progressId), {
           userId: user.uid,
-          crosswordId: id,
+          crosswordId: crosswordDocId,
           answers: JSON.stringify(answers),
           timer,
           isCompleted,
@@ -233,7 +271,7 @@ export function Solver() {
     }, 1500);
 
     return () => clearTimeout(tSave);
-  }, [answers, timer, isCompleted, id, user, progressId, board, hasStarted]);
+  }, [answers, timer, isCompleted, crosswordDocId, user, progressId, board, hasStarted]);
 
   const getCell = (x: number, y: number) => board?.grid.find((c) => c.x === x && c.y === y);
 
@@ -559,7 +597,25 @@ export function Solver() {
             <ArrowLeft size={18} />
           </motion.button>
           <div className="h-5 w-px bg-[#8bab84]/35" />
-          <h1 className="text-lg font-display font-bold text-[#edf2e3] truncate">{cw.title}</h1>
+          <div className="min-w-0 flex-1">
+            <h1 className="text-lg font-display font-bold text-[#edf2e3] truncate">{cw.title}</h1>
+            <div className="flex flex-wrap items-center gap-x-2 gap-y-0.5 mt-0.5 text-[11px] font-body text-[#c7d0bd]/72">
+              <span className="truncate max-w-[140px] sm:max-w-none">
+                {cw.authorDisplayName || (language === "ru" ? "Автор" : "Author")}
+              </span>
+              <span className="text-[#8bab84]/45">·</span>
+              <span className="font-mono">{board.width}×{board.height}</span>
+              <span className="text-[#8bab84]/45">·</span>
+              <span>{difficultyShort(cw.difficulty, language)}</span>
+              <Link
+                to={`/p/${cw.slug ?? crosswordDocId ?? slugOrId ?? ""}`}
+                className="inline-flex items-center gap-1 ml-1 text-[#b8cf9d]/90 hover:text-[#dff5cf] transition-colors shrink-0"
+              >
+                <ExternalLink size={12} aria-hidden />
+                {t("solverSharePage")}
+              </Link>
+            </div>
+          </div>
         </div>
 
         <div className="flex items-center gap-3">
