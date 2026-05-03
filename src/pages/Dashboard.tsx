@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { motion } from 'framer-motion';
-import { BookMarked, BookOpen, Clock, Coffee, Feather, Grid3X3, PenTool, Play, Plus, Sparkles, Trash2, Bookmark } from 'lucide-react';
+import { toast } from 'sonner';
+import { BookMarked, BookOpen, Clock, Coffee, CopyPlus, Feather, Grid3X3, PenTool, Play, Plus, Sparkles, Trash2, Bookmark } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { useLanguage } from '../contexts/LanguageContext';
 import { useCafe } from '../contexts/CafeContext';
@@ -12,7 +13,9 @@ import { createEmptyGrid, updateGridNumbers } from '../lib/gridUtils';
 import { computeAnswersHash } from '../lib/crypto';
 import { parseBoardState } from '../lib/boardParser';
 import { templates, type Template } from '../lib/templates';
-import { Steam, FloatingParticles, LampGlow, CoffeeBean, BookSpine, PageCurl, SuccessBurst } from '../components/CafeAnimations';
+import { Steam, FloatingParticles, LampGlow, CoffeeBean, BookSpine, PageCurl } from '../components/CafeAnimations';
+import { useConfirm } from '../components/ConfirmDialog';
+import { removeShareLink } from '../lib/shareLinkWrites';
 
 /* ─────────────── helpers ─────────────── */
 function MiniGrid({ tpl }: { tpl: Template }) {
@@ -68,6 +71,7 @@ export function Dashboard() {
   const { language, t } = useLanguage();
   const { playSound, effectsEnabled } = useCafe();
   const navigate = useNavigate();
+  const confirm = useConfirm();
 const [crosswords, setCrosswords] = useState<Crossword[]>([]);
   const [userTemplates, setUserTemplates] = useState<Crossword[]>([]);
   const [loading, setLoading] = useState(true);
@@ -107,6 +111,12 @@ const toCrosswordPayload = (data: Omit<Crossword, 'id'>): Omit<Crossword, 'id'> 
     updatedAt: data.updatedAt,
     isPublished: Boolean(data.isPublished),
     isTemplate: data.isTemplate === true,
+    visibility: data.visibility,
+    difficulty: data.difficulty,
+    authorDisplayName: data.authorDisplayName,
+  };
+};
+>>>>>>> 304ed06a7096212dfc236f15730766ee8ecc88ef
   };
 };
 
@@ -132,14 +142,26 @@ const toCrosswordPayload = (data: Omit<Crossword, 'id'>): Omit<Crossword, 'id'> 
     let boardState: BoardState = { width: template.width, height: template.height, grid, clues: { across: [], down: [] } };
     boardState = updateGridNumbers(boardState);
     const answersHash = computeAnswersHash(boardState);
-    const newPw: Crossword = { authorId: user.uid, title: language === 'ru' ? template.nameRu : template.name, boardState, answersHash, createdAt: Date.now(), updatedAt: Date.now(), isPublished: false, isTemplate: false };
+    const newPw: Crossword = {
+      authorId: user.uid,
+      title: language === 'ru' ? template.nameRu : template.name,
+      boardState,
+      answersHash,
+      createdAt: Date.now(),
+      updatedAt: Date.now(),
+      isPublished: false,
+      isTemplate: false,
+      visibility: 'private',
+      difficulty: 'medium',
+      authorDisplayName: user.displayName ?? '',
+    };
 try {
       await createCrossword(newId, newPw);
       navigate(`/editor/${newId}`);
     } catch (err: any) {
       console.error('Create crossword error:', err);
       const errorMsg = err?.message || err?.code || JSON.stringify(err);
-      alert(language === 'ru' ? `Ошибка: ${errorMsg}` : `Error: ${errorMsg}`);
+      toast.error(language === 'ru' ? `Ошибка: ${errorMsg}` : `Error: ${errorMsg}`);
     } finally {
       setCreating(false);
     }
@@ -152,28 +174,86 @@ try {
     const newId = crypto.randomUUID();
     const boardState = createEmptyGrid(15, 15);
     const answersHash = computeAnswersHash(boardState);
-    const newPw: Crossword = { authorId: user.uid, title: 'Untitled Crossword', boardState, answersHash, createdAt: Date.now(), updatedAt: Date.now(), isPublished: false, isTemplate: false };
+    const newPw: Crossword = {
+      authorId: user.uid,
+      title: language === 'ru' ? 'Кроссворд без названия' : 'Untitled Crossword',
+      boardState,
+      answersHash,
+      createdAt: Date.now(),
+      updatedAt: Date.now(),
+      isPublished: false,
+      isTemplate: false,
+      visibility: 'private',
+      difficulty: 'medium',
+      authorDisplayName: user.displayName ?? '',
+    };
     try {
       await createCrossword(newId, newPw);
       navigate(`/editor/${newId}`);
 } catch (err) {
       handleFirestoreError(err, 'create', `/crosswords/${newId}`);
-      alert(language === 'ru' ? 'Не удалось создать кроссворд. Проверьте правила Firestore для коллекции crosswords.' : 'Failed to create crossword. Check Firestore rules for crosswords collection.');
+      toast.error(language === 'ru' ? 'Не удалось создать кроссворд. Проверьте правила Firestore для коллекции crosswords.' : 'Failed to create crossword. Check Firestore rules for crosswords collection.');
     } finally {
       setCreating(false);
     }
   };
 
-  const handleDeleteCrossword = async (id: string) => {
-    const confirmMsg = language === 'ru' ? t('deleteCrosswordConfirm') : 'Delete this crossword? This action cannot be undone.';
-    if (!window.confirm(confirmMsg)) return;
+  const handleDeleteCrossword = async (cwRow: Crossword) => {
+    const ok = await confirm({
+      title: language === 'ru' ? 'Удалить кроссворд?' : 'Delete crossword?',
+      message: language === 'ru' ? t('deleteCrosswordConfirm') : 'Delete this crossword? This action cannot be undone.',
+      confirmLabel: t('uiDelete'),
+      cancelLabel: t('uiCancel'),
+      destructive: true,
+    });
+    if (!ok || !cwRow.id) return;
     try {
-      await deleteDoc(doc(db, 'crosswords', id));
-      setCrosswords(prev => prev.filter(cw => cw.id !== id));
+      if (cwRow.slug) await removeShareLink(cwRow.slug);
+      await deleteDoc(doc(db, 'crosswords', cwRow.id));
+      setCrosswords(prev => prev.filter(cw => cw.id !== cwRow.id));
       playSound('page-turn');
+      toast.success(language === 'ru' ? 'Удалено' : 'Deleted');
     } catch (err) {
       handleFirestoreError(err, 'delete');
       console.error(err);
+      toast.error(language === 'ru' ? 'Не удалось удалить' : 'Could not delete');
+    }
+  };
+
+  const handleDuplicate = async (cwRow: Crossword) => {
+    if (!user || creating || !cwRow.id) return;
+    const parsed = parseBoardState(cwRow.boardState);
+    if (!parsed) {
+      toast.error(language === 'ru' ? 'Не удалось прочитать кроссворд' : 'Could not read crossword');
+      return;
+    }
+    setCreating(true);
+    playSound('page-turn');
+    const newId = crypto.randomUUID();
+    const cloneTitle = language === 'ru' ? `Копия: ${cwRow.title}` : `Copy: ${cwRow.title}`;
+    const answersHash = cwRow.answersHash ?? computeAnswersHash(parsed);
+    const dup: Crossword = {
+      authorId: user.uid,
+      title: cloneTitle,
+      boardState: JSON.parse(JSON.stringify(parsed)) as BoardState,
+      answersHash,
+      createdAt: Date.now(),
+      updatedAt: Date.now(),
+      isPublished: false,
+      isTemplate: false,
+      visibility: 'private',
+      difficulty: cwRow.difficulty ?? 'medium',
+      authorDisplayName: user.displayName ?? '',
+    };
+    try {
+      await createCrossword(newId, dup);
+      toast.success(t('toastDuplicateReady'));
+      navigate(`/editor/${newId}`);
+    } catch (err) {
+      handleFirestoreError(err, 'create', `/crosswords/${newId}`);
+      toast.error(language === 'ru' ? 'Не удалось создать копию' : 'Could not duplicate');
+    } finally {
+      setCreating(false);
     }
   };
 
@@ -593,7 +673,16 @@ try {
                         </motion.button>
                         <motion.button
                           whileTap={{ scale: 0.9 }}
-                          onClick={() => handleDeleteCrossword(cw.id)}
+                          onClick={() => handleDuplicate(cw)}
+                          disabled={creating}
+                          title={t('duplicateAsTemplate')}
+                          className="p-1.5 rounded-sm text-cafe-leather/40 hover:text-cafe-honey hover:bg-cafe-leather/5 transition-all disabled:opacity-35"
+                        >
+                          <CopyPlus size={14} />
+                        </motion.button>
+                        <motion.button
+                          whileTap={{ scale: 0.9 }}
+                          onClick={() => void handleDeleteCrossword(cw)}
                           title={t('deleteCrossword')}
                           className="p-1.5 rounded-sm text-cafe-leather/40 hover:text-red-500 hover:bg-red-500/5 transition-all"
                         >
@@ -665,7 +754,7 @@ try {
                     </motion.button>
                     <motion.button
                       whileTap={{ scale: 0.97 }}
-                      onClick={() => { playSound('page-turn'); navigate(`/play/${cw.id}`); }}
+                      onClick={() => { playSound('page-turn'); navigate(`/play/${cw.slug ?? cw.id}`); }}
                       className="flex-1 flex items-center justify-center gap-2 py-3 bg-cafe-leather/[0.03] hover:bg-cafe-leather text-cafe-leather hover:text-cafe-paper font-subhead font-semibold transition-all text-sm"
                     >
                       <Play size={15} /> {t('play')}
