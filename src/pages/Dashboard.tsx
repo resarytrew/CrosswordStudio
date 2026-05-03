@@ -116,9 +116,6 @@ const toCrosswordPayload = (data: Omit<Crossword, 'id'>): Omit<Crossword, 'id'> 
     authorDisplayName: data.authorDisplayName,
   };
 };
->>>>>>> 304ed06a7096212dfc236f15730766ee8ecc88ef
-  };
-};
 
   const createCrossword = async (id: string, payload: Omit<Crossword, 'id'>) => {
     const ref = doc(db, 'crosswords', id);
