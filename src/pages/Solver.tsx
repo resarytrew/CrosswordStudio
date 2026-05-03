@@ -111,12 +111,12 @@ export function Solver() {
           return;
         }
         setBoard(parsedBoard);
-        for (let y = 0; y < parsedBoard.height; y++) {
+        outer: for (let y = 0; y < parsedBoard.height; y++) {
           for (let x = 0; x < parsedBoard.width; x++) {
             const c = parsedBoard.grid.find((cell) => cell.x === x && cell.y === y);
             if (c && !c.isBlock && !c.isHidden) {
               setSelectedCell({ x, y });
-              return;
+              break outer;
             }
           }
         }

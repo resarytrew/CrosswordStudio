@@ -283,6 +283,28 @@ export function Editor() {
     setMobileCluePanel(direction);
   }, [direction]);
 
+  useEffect(() => {
+    if (!hasLoadedRef.current || !board || !isDirty) return;
+    if (autoSaveTimerRef.current) {
+      window.clearTimeout(autoSaveTimerRef.current);
+    }
+    autoSaveTimerRef.current = window.setTimeout(async () => {
+      const success = await save(board, title);
+      if (success) {
+        setIsDirty(false);
+        setStatus(language === 'ru' ? 'Черновик автосохранён' : 'Draft autosaved', 'info');
+      } else {
+        setStatus(language === 'ru' ? 'Автосохранение не удалось' : 'Autosave failed', 'error');
+      }
+    }, 1400);
+
+    return () => {
+      if (autoSaveTimerRef.current) {
+        window.clearTimeout(autoSaveTimerRef.current);
+      }
+    };
+  }, [board, title, isDirty, save, language, setStatus]);
+
   if (!board) return <div className="p-8 text-center animate-pulse font-body text-cafe-espresso/60">{t('loadingEditor')}</div>;
 
   const currentCell = selectedCell ? getCell(selectedCell.x, selectedCell.y) : null;
@@ -566,28 +588,6 @@ export function Editor() {
       );
     }
   };
-
-  useEffect(() => {
-    if (!hasLoadedRef.current || !board || !isDirty) return;
-    if (autoSaveTimerRef.current) {
-      window.clearTimeout(autoSaveTimerRef.current);
-    }
-    autoSaveTimerRef.current = window.setTimeout(async () => {
-      const success = await save(board, title);
-      if (success) {
-        setIsDirty(false);
-        setStatus(language === 'ru' ? 'Черновик автосохранён' : 'Draft autosaved', 'info');
-      } else {
-        setStatus(language === 'ru' ? 'Автосохранение не удалось' : 'Autosave failed', 'error');
-      }
-    }, 1400);
-
-    return () => {
-      if (autoSaveTimerRef.current) {
-        window.clearTimeout(autoSaveTimerRef.current);
-      }
-    };
-  }, [board, title, isDirty, save, language, setStatus]);
 
   return (
     <div
