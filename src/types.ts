@@ -1,6 +1,12 @@
+export type CrosswordVisibility = 'private' | 'link' | 'public';
+
+export type CrosswordDifficulty = 'easy' | 'medium' | 'hard';
+
 export interface Crossword {
   id?: string;
   authorId: string;
+  /** Cached display name for share cards / previews */
+  authorDisplayName?: string;
   title: string;
   boardState: BoardState;
   answersHash?: string;
@@ -8,6 +14,10 @@ export interface Crossword {
   updatedAt: number;
   isPublished: boolean;
   isTemplate?: boolean;
+  /** Short share handle; resolves via shareLinks/{slug} */
+  slug?: string;
+  visibility?: CrosswordVisibility;
+  difficulty?: CrosswordDifficulty;
 }
 
 export interface CrosswordAnswers {
