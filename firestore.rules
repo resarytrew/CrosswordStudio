@@ -71,18 +71,8 @@ function isValidCrosswordUpdate(data, old) {
     match /shareLinks/{slug} {
       allow get: if isValidSlug(slug);
       allow list: if false;
-      allow create: if isSignedIn()
-        && isValidSlug(slug)
-        && incoming().keys().hasOnly(['crosswordId'])
-        && incoming().crosswordId is string
-        && isValidId(incoming().crosswordId)
-        && exists(/databases/$(database)/documents/crosswords/$(incoming().crosswordId))
-        && get(/databases/$(database)/documents/crosswords/$(incoming().crosswordId)).data.authorId == request.auth.uid;
-      allow delete: if isSignedIn()
-        && isValidSlug(slug)
-        && resource.data.crosswordId is string
-        && exists(/databases/$(database)/documents/crosswords/$(resource.data.crosswordId))
-        && get(/databases/$(database)/documents/crosswords/$(resource.data.crosswordId)).data.authorId == request.auth.uid;
+      allow create: if isSignedIn() && isValidSlug(slug) && incoming().keys().hasOnly(['crosswordId']) && incoming().crosswordId is string;
+      allow delete: if isSignedIn() && isValidSlug(slug);
       allow update: if false;
     }
 
