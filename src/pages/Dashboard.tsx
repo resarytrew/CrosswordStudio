@@ -118,10 +118,8 @@ const toCrosswordPayload = (data: Omit<Crossword, 'id'>): Omit<Crossword, 'id'> 
 };
 
 const createCrossword = async (id: string, payload: Omit<Crossword, 'id'>) => {
-    const finalPayload = toCrosswordPayload(payload);
-    console.log('[createCrossword] FINAL payload:', JSON.stringify({ ...finalPayload, id }, (k, v) => typeof v === 'object' && v !== null ? v : v, 2));
     const ref = doc(db, 'crosswords', id);
-    await setDoc(ref, finalPayload);
+    await setDoc(ref, toCrosswordPayload(payload));
   };
 
   /* ── creators ── */

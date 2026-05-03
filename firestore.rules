@@ -54,11 +54,18 @@ function isValidCrosswordUpdate(data, old) {
     }
 
     match /crosswords/{crosswordId} {
-      allow get: if true;
-      allow list: if true;
-      allow create: if true;
-      allow update: if true;
-      allow delete: if true;
+      allow get: if isValidId(crosswordId) && crosswordReadable(existing());
+
+      allow list: if (resource.data.isPublished == true)
+        || (resource.data.visibility == 'public')
+        || (isSignedIn() && resource.data.authorId == request.auth.uid);
+
+      allow create: if isValidId(crosswordId) && isSignedIn() && isValidCrossword(incoming());
+      
+      allow update: if isValidId(crosswordId) && isSignedIn() && existing().authorId == request.auth.uid
+        && isValidCrosswordUpdate(incoming(), existing());
+
+      allow delete: if isValidId(crosswordId) && isSignedIn() && existing().authorId == request.auth.uid;
     }
 
     match /shareLinks/{slug} {
