@@ -15,6 +15,7 @@ import { parseBoardState } from '../lib/boardParser';
 import { templates, type Template } from '../lib/templates';
 import { Steam, FloatingParticles, LampGlow, CoffeeBean, BookSpine, PageCurl } from '../components/CafeAnimations';
 import { useConfirm } from '../components/ConfirmDialog';
+import { useGridSizeDialog } from '../components/GridSizeDialog';
 import { removeShareLink } from '../lib/shareLinkWrites';
 
 /* ─────────────── helpers ─────────────── */
@@ -72,7 +73,8 @@ export function Dashboard() {
   const { playSound, effectsEnabled } = useCafe();
   const navigate = useNavigate();
   const confirm = useConfirm();
-const [crosswords, setCrosswords] = useState<Crossword[]>([]);
+  const openGridSizeDialog = useGridSizeDialog();
+  const [crosswords, setCrosswords] = useState<Crossword[]>([]);
   const [userTemplates, setUserTemplates] = useState<Crossword[]>([]);
   const [loading, setLoading] = useState(true);
   const [creating, setCreating] = useState(false);
@@ -166,10 +168,19 @@ try {
 
   const handleCreate = async () => {
     if (!user || creating) return;
+    
+    const size = await openGridSizeDialog({
+      title: language === 'ru' ? 'Выберите размер сетки' : 'Choose grid size',
+      confirmLabel: language === 'ru' ? 'Создать' : 'Create',
+      cancelLabel: language === 'ru' ? 'Отмена' : 'Cancel',
+    });
+    
+    if (!size) return;
+    
     setCreating(true);
     playSound('book-open');
     const newId = crypto.randomUUID();
-    const boardState = createEmptyGrid(15, 15);
+    const boardState = createEmptyGrid(size.width, size.height);
     const answersHash = computeAnswersHash(boardState);
     const newPw: Crossword = {
       authorId: user.uid,

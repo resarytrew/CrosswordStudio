@@ -6,6 +6,7 @@ import { AuthProvider, useAuth } from './contexts/AuthContext';
 import { LanguageProvider } from './contexts/LanguageContext';
 import { CafeProvider } from './contexts/CafeContext';
 import { ConfirmProvider } from './components/ConfirmDialog';
+import { GridSizeDialogProvider } from './components/GridSizeDialog';
 import { Dashboard } from './pages/Dashboard';
 import { Editor } from './pages/Editor';
 import { Solver } from './pages/Solver';
@@ -25,7 +26,8 @@ function App() {
       <HelmetProvider>
         <AuthProvider>
           <ConfirmProvider>
-            <CafeProvider>
+            <GridSizeDialogProvider>
+              <CafeProvider>
               <Router>
                 <Layout>
                   <Routes>
@@ -53,6 +55,7 @@ function App() {
               </Router>
               <Toaster richColors closeButton position="top-center" theme="dark" />
             </CafeProvider>
+            </GridSizeDialogProvider>
           </ConfirmProvider>
         </AuthProvider>
       </HelmetProvider>
