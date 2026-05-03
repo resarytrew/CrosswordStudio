@@ -7,10 +7,11 @@ import { useLanguage } from '../contexts/LanguageContext';
 import { useCafe } from '../contexts/CafeContext';
 import { BoardState, Crossword } from '../types';
 import { parseBoardState } from '../lib/boardParser';
-import { Download, Share2, Instagram, Twitter, Copy, Check, Palette, Sparkles, Type, Sunrise } from 'lucide-react';
+import { generateSVG, generateHTML } from '../lib/exportUtils';
+import { Download, Share2, Instagram, Twitter, Copy, Check, Palette, Sparkles, Type, Sunrise, Printer, FileText, Code } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 
-type WordArtStyle = 'classic' | 'neon' | 'minimalist' | 'vintage' | 'modern';
+type WordArtStyle = 'classic' | 'neon' | 'minimalist' | 'vintage' | 'modern' | 'print' | 'newspaper' | 'braille';
 type ExportType = 'filled' | 'empty' | 'clues';
 
 interface WordArtStyleOption {
@@ -33,6 +34,9 @@ const styles: WordArtStyleOption[] = [
   { id: 'minimalist', name: 'Minimal', description: 'Clean and simple', icon: <Palette size={20} /> },
   { id: 'vintage', name: 'Vintage', description: 'Old newspaper feel', icon: <Sunrise size={20} /> },
   { id: 'modern', name: 'Modern', description: 'Contemporary design', icon: <Sparkles size={20} /> },
+  { id: 'print', name: 'Print Ready', description: 'Optimized for black & white printing', icon: <Printer size={20} /> },
+  { id: 'newspaper', name: 'Newspaper', description: 'Classic newspaper style', icon: <FileText size={20} /> },
+  { id: 'braille', name: 'Braille', description: 'Tactile print friendly', icon: <Printer size={20} /> },
 ];
 
 const exportTypes: ExportTypeOption[] = [
@@ -101,6 +105,36 @@ const styleConfigs: Record<WordArtStyle, {
     fontFamily: 'Inter, sans-serif',
     titleColor: '#ffffff',
   },
+  print: {
+    background: '#ffffff',
+    cellBg: '#ffffff',
+    cellBorder: '#000000',
+    letterColor: '#000000',
+    numberColor: '#000000',
+    accentColor: '#333333',
+    fontFamily: 'Times New Roman, serif',
+    titleColor: '#000000',
+  },
+  newspaper: {
+    background: '#f5f5dc',
+    cellBg: '#fffef5',
+    cellBorder: '#2c2c2c',
+    letterColor: '#1a1a1a',
+    numberColor: '#666666',
+    accentColor: '#8b0000',
+    fontFamily: 'Georgia, serif',
+    titleColor: '#1a1a1a',
+  },
+  braille: {
+    background: '#ffffff',
+    cellBg: '#ffffff',
+    cellBorder: '#000000',
+    letterColor: '#000000',
+    numberColor: '#000000',
+    accentColor: '#000000',
+    fontFamily: 'Arial, sans-serif',
+    titleColor: '#000000',
+  },
 };
 
 export function WordArtExport() {
@@ -117,6 +151,9 @@ export function WordArtExport() {
   const [showPreview, setShowPreview] = useState(false);
   const [copied, setCopied] = useState(false);
   const [loading, setLoading] = useState(true);
+  const [resolution, setResolution] = useState(150);
+  const [showNumbers, setShowNumbers] = useState(true);
+  const [showWatermark, setShowWatermark] = useState(false);
 
   const canvasRef = useRef<HTMLCanvasElement>(null);
 
@@ -153,22 +190,30 @@ export function WordArtExport() {
 
     const config = styleConfigs[style];
     const padding = 40;
-    const cellSize = Math.min(600 / board.width, 600 / board.height);
+    const baseCellSize = Math.min(600 / board.width, 600 / board.height);
+    const cellSize = baseCellSize;
     const gridWidth = board.width * cellSize;
     const gridHeight = board.height * cellSize;
     const titleHeight = 80;
 
-    let footerHeight = 60;
+    let footerHeight = showWatermark ? 60 : 40;
     let cluesHeight = 0;
     
     if (exportType === 'clues') {
       const maxClues = Math.max(board.clues.across.length, board.clues.down.length);
       cluesHeight = maxClues * 24 + 60;
-      footerHeight = 40;
+      footerHeight = showWatermark ? 80 : 40;
     }
 
     canvas.width = gridWidth + padding * 2;
     canvas.height = gridWidth + padding * 2 + titleHeight + footerHeight + cluesHeight;
+
+    const scale = resolution / 72;
+    if (scale > 1) {
+      canvas.width = Math.round(canvas.width * scale);
+      canvas.height = Math.round(canvas.height * scale);
+      ctx.scale(scale, scale);
+    }
 
     const bgGradient = ctx.createLinearGradient(0, 0, canvas.width, canvas.height);
     if (config.background.includes('gradient')) {
@@ -222,7 +267,7 @@ export function WordArtExport() {
           ctx.strokeRect(cellX, cellY, cellSize, cellSize);
           ctx.shadowBlur = 0;
 
-          if (cell.number && exportType !== 'clues') {
+          if (cell.number && exportType !== 'clues' && showNumbers) {
             ctx.font = `bold ${cellSize * 0.25}px ${config.fontFamily}`;
             ctx.fillStyle = config.numberColor;
             ctx.textAlign = 'left';
@@ -293,15 +338,17 @@ export function WordArtExport() {
     ctx.font = `12px ${config.fontFamily}`;
     ctx.fillStyle = config.numberColor;
     ctx.textAlign = 'center';
-    ctx.fillText('Crossword Studio', canvas.width / 2, canvas.height - 20);
+    if (showWatermark) {
+      ctx.fillText('Crossword Studio', canvas.width / 2, canvas.height - 20);
+    }
 
-  }, [board, cw, style, exportType, getCell]);
+  }, [board, cw, style, exportType, getCell, showNumbers, showWatermark, resolution]);
 
   React.useEffect(() => {
     if (board && cw) {
       renderWordArt();
     }
-  }, [board, cw, style, renderWordArt]);
+  }, [board, cw, style, renderWordArt, showNumbers, showWatermark, resolution]);
 
   const downloadImage = useCallback(() => {
     if (!canvasRef.current) return;
@@ -385,7 +432,7 @@ export function WordArtExport() {
             </div>
             
             <p className="text-body text-cafe-espresso/70 mb-4">Choose a style:</p>
-            <div className="grid grid-cols-5 gap-3">
+            <div className="grid grid-cols-4 gap-3 mb-6">
               {styles.map((s) => (
                 <motion.button
                   key={s.id}
@@ -406,6 +453,49 @@ export function WordArtExport() {
                 </motion.button>
               ))}
             </div>
+
+            <div className="mb-6 p-4 bg-cafe-parchment/30 rounded-sm">
+              <p className="text-body text-cafe-espresso/70 mb-3">Export options:</p>
+              <div className="grid grid-cols-3 gap-4">
+                <div>
+                  <label className="text-subhead text-sm text-cafe-leather mb-2 block">Resolution (DPI)</label>
+                  <select
+                    value={resolution}
+                    onChange={(e) => setResolution(Number(e.target.value))}
+                    className="w-full p-2 rounded-sm border border-cafe-leather/20 bg-cafe-paper text-cafe-leather"
+                  >
+                    <option value={72}>72 (Screen)</option>
+                    <option value={150}>150 (Web print)</option>
+                    <option value={300}>300 (Quality)</option>
+                    <option value={600}>600 (Professional)</option>
+                  </select>
+                </div>
+                <div>
+                  <label className="text-subhead text-sm text-cafe-leather mb-2 block">Grid options</label>
+                  <label className="flex items-center gap-2 cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={showNumbers}
+                      onChange={(e) => setShowNumbers(e.target.checked)}
+                      className="w-4 h-4"
+                    />
+                    <span className="text-sm text-cafe-leather">Show numbers</span>
+                  </label>
+                </div>
+                <div>
+                  <label className="text-subhead text-sm text-cafe-leather mb-2 block">Watermark</label>
+                  <label className="flex items-center gap-2 cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={showWatermark}
+                      onChange={(e) => setShowWatermark(e.target.checked)}
+                      className="w-4 h-4"
+                    />
+                    <span className="text-sm text-cafe-leather">Show logo</span>
+                  </label>
+                </div>
+              </div>
+            </div>
           </div>
 
           <div className="mb-6 flex justify-center">
@@ -425,6 +515,49 @@ export function WordArtExport() {
             >
               <Download size={20} />
               Download PNG
+            </motion.button>
+
+            <motion.button
+              whileHover={{ scale: 1.02, y: -2 }}
+              whileTap={{ scale: 0.98 }}
+              onClick={() => {
+                if (!board || !cw) return;
+                generateSVG(board, cw, style, exportType as ExportType, {
+                  showNumbers,
+                  showWatermark,
+                });
+                playSound('save');
+              }}
+              className="flex items-center gap-2 px-6 py-3 bg-cafe-paper border border-cafe-leather/20 text-cafe-leather rounded-sm font-subhead font-semibold hover:bg-cafe-leather/5 transition-all shadow-md"
+            >
+              <Code size={20} />
+              SVG
+            </motion.button>
+
+            <motion.button
+              whileHover={{ scale: 1.02, y: -2 }}
+              whileTap={{ scale: 0.98 }}
+              onClick={() => {
+                if (!board || !cw) return;
+                const html = generateHTML(board, cw, style, exportType as ExportType, {
+                  showNumbers,
+                  showWatermark,
+                });
+                const blob = new Blob([html], { type: 'text/html' });
+                const url = URL.createObjectURL(blob);
+                const link = document.createElement('a');
+                link.href = url;
+                link.download = `${cw.title || 'crossword'}.html`;
+                document.body.appendChild(link);
+                link.click();
+                document.body.removeChild(link);
+                URL.revokeObjectURL(url);
+                playSound('save');
+              }}
+              className="flex items-center gap-2 px-6 py-3 bg-cafe-paper border border-cafe-leather/20 text-cafe-leather rounded-sm font-subhead font-semibold hover:bg-cafe-leather/5 transition-all shadow-md"
+            >
+              <Code size={20} />
+              HTML
             </motion.button>
 
             <motion.button
