@@ -68,8 +68,8 @@ function isValidCrosswordUpdate(data, old) {
       allow get: if isValidSlug(slug);
       allow list: if false;
       allow create: if isSignedIn() && isValidSlug(slug);
+      allow update: if isSignedIn() && isValidSlug(slug);
       allow delete: if isSignedIn() && isValidSlug(slug);
-      allow update: if false;
     }
 
     function isValidProgress(data) {

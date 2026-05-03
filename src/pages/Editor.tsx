@@ -47,6 +47,7 @@ export function Editor() {
   const [isDirty, setIsDirty] = useState(false);
   const hasLoadedRef = useRef(false);
   const autoSaveTimerRef = useRef<number | null>(null);
+  const lastToastTimeRef = useRef(0);
   /** Prefer slug over UUID for clipboard links after save */
   const shareLinkKeyRef = useRef('');
 
@@ -327,7 +328,11 @@ export function Editor() {
       const success = await save(board, title);
       if (success) {
         setIsDirty(false);
-        toast.info(language === 'ru' ? 'Черновик автосохранён' : 'Draft autosaved');
+        const now = Date.now();
+        if (now - lastToastTimeRef.current > 10000) {
+          lastToastTimeRef.current = now;
+          toast.info(language === 'ru' ? 'Черновик автосохранён' : 'Draft autosaved');
+        }
       } else {
         toast.error(language === 'ru' ? 'Автосохранение не удалось' : 'Autosave failed');
       }
