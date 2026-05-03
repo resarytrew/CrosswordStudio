@@ -1,10 +1,6 @@
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
-    
-    match /{document=**} {
-      allow read, write: if false;
-    }
 
     function isSignedIn() { return request.auth != null; }
     function isValidId(id) { return id is string && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$'); }
@@ -69,11 +65,11 @@ function isValidCrosswordUpdate(data, old) {
     }
 
     match /shareLinks/{slug} {
-      allow get: if true;
-      allow list: if true;
-      allow create: if true;
-      allow delete: if true;
-      allow update: if true;
+      allow get: if isValidSlug(slug);
+      allow list: if false;
+      allow create: if isSignedIn() && isValidSlug(slug);
+      allow delete: if isSignedIn() && isValidSlug(slug);
+      allow update: if false;
     }
 
     function isValidProgress(data) {

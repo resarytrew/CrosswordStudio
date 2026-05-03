@@ -5,7 +5,6 @@ import { generateShareSlug } from './slug';
 /** Points slug → crossword document id (public read). */
 export async function upsertShareLink(slug: string, crosswordId: string): Promise<boolean> {
   try {
-    console.log('[upsertShareLink] slug:', slug, 'crosswordId:', crosswordId);
     await setDoc(doc(db, 'shareLinks', slug), { crosswordId }, { merge: true });
     return true;
   } catch (e) {
