@@ -7,8 +7,7 @@ import { useLanguage } from '../contexts/LanguageContext';
 import { useCafe } from '../contexts/CafeContext';
 import { BoardState, Crossword } from '../types';
 import { parseBoardState } from '../lib/boardParser';
-import { generateSVG, generateHTML } from '../lib/exportUtils';
-import { Download, Share2, Instagram, Twitter, Copy, Check, Palette, Sparkles, Type, Sunrise, Printer, FileText, Code } from 'lucide-react';
+import { Download, Share2, Instagram, Twitter, Copy, Check, Palette, Sparkles, Type, Sunrise, Printer, FileText } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 
 type WordArtStyle = 'classic' | 'neon' | 'minimalist' | 'vintage' | 'modern' | 'print' | 'newspaper' | 'braille';
@@ -515,49 +514,6 @@ export function WordArtExport() {
             >
               <Download size={20} />
               Download PNG
-            </motion.button>
-
-            <motion.button
-              whileHover={{ scale: 1.02, y: -2 }}
-              whileTap={{ scale: 0.98 }}
-              onClick={() => {
-                if (!board || !cw) return;
-                generateSVG(board, cw, style, exportType as ExportType, {
-                  showNumbers,
-                  showWatermark,
-                });
-                playSound('save');
-              }}
-              className="flex items-center gap-2 px-6 py-3 bg-cafe-paper border border-cafe-leather/20 text-cafe-leather rounded-sm font-subhead font-semibold hover:bg-cafe-leather/5 transition-all shadow-md"
-            >
-              <Code size={20} />
-              SVG
-            </motion.button>
-
-            <motion.button
-              whileHover={{ scale: 1.02, y: -2 }}
-              whileTap={{ scale: 0.98 }}
-              onClick={() => {
-                if (!board || !cw) return;
-                const html = generateHTML(board, cw, style, exportType as ExportType, {
-                  showNumbers,
-                  showWatermark,
-                });
-                const blob = new Blob([html], { type: 'text/html' });
-                const url = URL.createObjectURL(blob);
-                const link = document.createElement('a');
-                link.href = url;
-                link.download = `${cw.title || 'crossword'}.html`;
-                document.body.appendChild(link);
-                link.click();
-                document.body.removeChild(link);
-                URL.revokeObjectURL(url);
-                playSound('save');
-              }}
-              className="flex items-center gap-2 px-6 py-3 bg-cafe-paper border border-cafe-leather/20 text-cafe-leather rounded-sm font-subhead font-semibold hover:bg-cafe-leather/5 transition-all shadow-md"
-            >
-              <Code size={20} />
-              HTML
             </motion.button>
 
             <motion.button
