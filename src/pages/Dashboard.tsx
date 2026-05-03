@@ -97,18 +97,18 @@ const [crosswords, setCrosswords] = useState<Crossword[]>([]);
   }, [user]);
 
 const toCrosswordPayload = (data: Omit<Crossword, 'id'>): Omit<Crossword, 'id'> => {
-    const plainBoard = JSON.parse(JSON.stringify(data.boardState)) as BoardState;
-    return {
-      authorId: data.authorId,
-      title: data.title,
-      boardState: plainBoard,
-      answersHash: data.answersHash,
-      createdAt: data.createdAt,
-      updatedAt: data.updatedAt,
-      isPublished: data.isPublished,
-      isTemplate: data.isTemplate,
-    };
+  const plainBoard = JSON.parse(JSON.stringify(data.boardState)) as BoardState;
+  return {
+    authorId: data.authorId,
+    title: data.title,
+    boardState: plainBoard,
+    answersHash: data.answersHash,
+    createdAt: data.createdAt,
+    updatedAt: data.updatedAt,
+    isPublished: Boolean(data.isPublished),
+    isTemplate: data.isTemplate === true,
   };
+};
 
   const createCrossword = async (id: string, payload: Omit<Crossword, 'id'>) => {
     const ref = doc(db, 'crosswords', id);
